@@ -21,6 +21,7 @@ class Teacher(ABC):
         self.sampling_params = SamplingParams(temperature=config["temperature"], max_tokens=config["max_tokens"])
         self.min_score = config.get("min_score", 1)
         self.max_score = config.get("max_score", 9)
+        self.default_score = config.get("default_score", 5)
         logger.info("Initializing teacher model: %s", self.model_name)
         self.load_model()
 
@@ -84,14 +85,36 @@ class Teacher(ABC):
 
         messages_batch = [self.prepare_llm_input(sample) for sample in batch]
 
-        results = self.model.chat(messages_batch, self.sampling_params, use_tqdm=False)
-        outputs = [r.outputs[0].text.strip() for r in results]
-        scores = [self.parse_score(output) for output in outputs]
+        try:
+            results = self.model.chat(messages_batch, self.sampling_params, use_tqdm=False)
+        except Exception as e:
+            logger.error("LLM chat failed for batch of %d samples: %s", len(batch), str(e))
+            logger.debug("Returning default values for the entire batch")
+            return [self.default_score] * len(batch)
+
+        outputs = []
+        for r in results:
+            try:
+                text = r.outputs[0].text.strip()
+            except Exception as e:
+                logger.warning("Failed to extract output text: %s", str(e))
+                text = ""
+            outputs.append(text)
+
+        scores = []
+        for output in outputs:
+            try:
+                score = self.parse_score(output)
+            except Exception as e:
+                logger.warning("Score parsing failed for output '%s': %s", output, str(e))
+                score = self.default_score
+            scores.append(score)
 
         logger.debug("Outputs: %s", outputs)
         logger.debug("Scores: %s", scores)
 
         return scores
+
 
 
 class Llama3Teacher(Teacher):

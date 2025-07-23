@@ -98,7 +98,6 @@ class CustomPPOTrainer(PPOTrainer):
         self.base_out_dir = os.path.join(save_base_dir, model_dir_name)
         self.meta_dir = os.path.join(self.base_out_dir, "meta_data") if save_meta_dir is None else save_meta_dir
 
-        logger.info("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
         logger.info(self.meta_dir)
         
         os.makedirs(self.meta_dir, exist_ok=True)
@@ -117,12 +116,12 @@ class CustomPPOTrainer(PPOTrainer):
 
     def _push_to_hub(self, branch: str, msg: str):
         """Upload model+tokenizer to a branch using a single HfApi handle."""
-        # ensure repo / branch exist
+
         self.api.create_repo(repo_id=self.repo_id, exist_ok=True, repo_type="model")
         if branch != "main":
             self.api.create_branch(repo_id=self.repo_id, branch=branch, exist_ok=True)
 
-        # save to deterministic dir and push
+
         ckpt_dir = os.path.join(self.meta_dir, "_ckpt_upload")
         if os.path.exists(ckpt_dir):
             shutil.rmtree(ckpt_dir)

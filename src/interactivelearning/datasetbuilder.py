@@ -70,7 +70,6 @@ class DatasetBuilder(ABC):
         """Return `(split_name, text_field)` pair."""
         ...
 
-    # ------------------------------------------------------------------ tokenisation helpers
 
     def _tokenize_batch(self, batch: Dict[str, List[str]], text_key: str):
         """Vectorised tokenisation for a batch of texts."""
@@ -88,7 +87,6 @@ class DatasetBuilder(ABC):
         ids = self.tokenizer.encode(sample[text_key])[: self.input_size_sampler()]
         return {"input_ids": ids, "query": self.tokenizer.decode(ids)}
 
-    # ------------------------------------------------------------------ limit
 
     def _truncate_to_token_limit(self, dataset):
         if self.token_limit is None:

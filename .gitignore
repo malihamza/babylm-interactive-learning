@@ -11,7 +11,9 @@
 src/wandb/
 src/interactive-learning/__pycache__
 data/
-babylm_gpt2_small/
+babylm-*/
+babylm_*/
+
 
 __MACOSX
 .vscode
