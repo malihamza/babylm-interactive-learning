@@ -1,12 +1,15 @@
 model_name: gpt2
 learning_rate: 1.41e-5
 log_with: wandb
+hf_org" : llm-slice
+
+
 
 # Trainer Settings
 num_epochs: 1
-batch_size: 32
-token_limit: 1200000
-checkpoint_interval: 100000
+batch_size: 1
+token_limit: 2000
+# checkpoint_interval: 100000
 save_base_dir: saved_models/
 
 

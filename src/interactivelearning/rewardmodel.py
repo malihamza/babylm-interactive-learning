@@ -10,9 +10,9 @@ class RewardModel(ABC):
 
 
 class RandomRewardModel(RewardModel):
-    def __call__(self, texts):
-        logger.debug(f"Generating reward scores for {len(texts)} samples")
-        return [torch.tensor(float(x), dtype=torch.float32) for x in torch.randint(1, 10, (len(texts),))]
+    def __call__(self, prompt_completion_pairs):
+        logger.debug(f"Generating reward scores for {len(prompt_completion_pairs)} samples")
+        return [torch.tensor(float(x), dtype=torch.float32) for x in torch.randint(1, 10, (len(prompt_completion_pairs),))]
 
 class Llama3RwardModel(RewardModel):
     def __init__(self, config):

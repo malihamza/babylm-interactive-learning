@@ -16,21 +16,20 @@ def main(ppo_cfg, teacher_cfg):
         log_with=ppo_cfg.get("log_with", None),
         mini_batch_size=ppo_cfg.get("batch_size"),
         batch_size=ppo_cfg.get("batch_size"),
-        token_limit=ppo_cfg.get("token_limit"),
-        checkpoint_interval=ppo_cfg.get("checkpoint_interval", 100000),
         output_min_length=ppo_cfg.get("output_min_length", 64),
         output_max_length=ppo_cfg.get("output_max_length", 128),
     )
-    
+
     token_limit = ppo_cfg.get("token_limit")
     data_path = ppo_cfg.get("data_path")
 
     query_min_length = ppo_cfg.get("query_min_length")
     query_max_length = ppo_cfg.get("query_max_length")
 
+
     # Dataset builders
     builder1 = TinyStoriesDatasetBuilder(ppo_config, 
-                                         cache_dir=data_path,
+                                            cache_dir=data_path,
                                         min_len=query_min_length, 
                                         max_len=query_max_length)
 
@@ -38,6 +37,7 @@ def main(ppo_cfg, teacher_cfg):
     combined_dataset = DatasetCombiner([builder1])
     combined_dataset.set_token_limit(token_limit=token_limit)
     combined_dataset = combined_dataset.load()
+
 
     # Reward model
     reward_model = Llama3RwardModel(config=teacher_cfg)
@@ -47,7 +47,6 @@ def main(ppo_cfg, teacher_cfg):
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(ppo_cfg["model_name"])
     tokenizer = builder1.tokenizer
 
-    # Trainer
     trainer = CustomPPOTrainer(
         config=ppo_config,
         model=model,
@@ -55,6 +54,8 @@ def main(ppo_cfg, teacher_cfg):
         tokenizer=tokenizer,
         dataset=combined_dataset,
         reward_fn=reward_model,
+        word_budget=token_limit,
+        hf_org=ppo_cfg.get("hf_org", "llm-slice"),
         save_base_dir=ppo_cfg.get("save_base_dir", "saved_models")
     )
 
