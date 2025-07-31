@@ -87,6 +87,7 @@ api.create_repo(repo_id=args.hub_repo, exist_ok=True)
 
 print("🡒 Loading BabyLM Strict 100 M‑word corpus (nilq/babylm-100M) …")
 dataset = load_dataset("nilq/babylm-100M", split="train")
+eval_dataset = load_dataset("nilq/babylm-100M", split="validation")
 
 if args.dataset_fraction < 1.0:
     dataset = dataset.shuffle(seed=42)
@@ -136,6 +137,11 @@ lm_ds = tokenised.map(group_fn, batched=True, batch_size=1000)
 lm_ds = lm_ds.filter(lambda x: len(x["input_ids"]) == args.seq_length)
 print(f"   Final training sequences: {len(lm_ds):,} of length {args.seq_length}.")
 
+tokenized_eval = eval_dataset.map(tok_fn, batched=True, remove_columns=["text"])
+lm_eval_ds = tokenized_eval.map(group_fn, batched=True, batch_size=1000)
+lm_eval_ds = lm_eval_ds.filter(lambda x: len(x["input_ids"]) == args.seq_length)
+print(f"   Final eval sequences: {len(lm_eval_ds):,} of length {args.seq_length}.")
+
 # ---------------------------------------------------------------------------
 # 6  Model
 # ---------------------------------------------------------------------------
@@ -165,8 +171,10 @@ train_args = TrainingArguments(
     warmup_ratio=0.01,
     bf16=args.bf16,
     fp16=args.fp16,
-    logging_strategy="steps", 
+    logging_strategy="steps",
     logging_steps=100,
+    evaluation_strategy="steps",
+    eval_steps=500,
     save_strategy="no",
     report_to=["wandb"],
     seed=args.seed,
