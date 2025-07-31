@@ -1,6 +1,7 @@
 /wandb/
 /wandb_results/
 .venv/
+.env
 /__pycache__/
 **/*.out
 **/*.jsonl
