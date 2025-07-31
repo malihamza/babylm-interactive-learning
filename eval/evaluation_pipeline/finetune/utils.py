@@ -51,4 +51,8 @@ def seed_everything(seed_value: int = 42) -> None:
     os.environ['PYTHONHASHSEED'] = str(seed_value)
     random.seed(seed_value)
     torch.manual_seed(seed_value)
-    torch.cuda.manual_seed(seed_value)
+
+    # Seed for CUDA if available
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value)  # If using multi-GPU

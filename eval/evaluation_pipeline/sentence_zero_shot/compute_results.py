@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 from tqdm import tqdm
 import argparse
 
-DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
 
 def compute_results(args: argparse.ArgumentParser, model: torch.nn.Module, dataloader: DataLoader, temperatures: list[float]):

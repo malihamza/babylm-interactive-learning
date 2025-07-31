@@ -12,7 +12,7 @@ import torch
 from evaluation_pipeline.sentence_zero_shot.dataset import get_dataloader
 from evaluation_pipeline.sentence_zero_shot.compute_results import compute_results
 
-DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
 
 def _parse_arguments():

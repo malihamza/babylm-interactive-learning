@@ -24,10 +24,16 @@ def read_files(data_path: pathlib.Path, task: str, full_sentence_scores: bool) -
     for filename in data_path.iterdir():
         if filename.suffix != ".jsonl":
             continue
+        if filename.name.startswith("._"):
+            continue  # Skip AppleDouble files!
 
-        with filename.open("r") as f:
-            for line in f:
-                data.append(decode(line, filename, task, full_sentence_scores))
+        try:
+            with filename.open("r") as f:
+                for line in f:
+                    data.append(decode(line, filename, task, full_sentence_scores))
+        except UnicodeDecodeError as e:
+            print(f"UnicodeDecodeError in file: {filename} -> {e}", flush=True)
+            continue
 
     return data
 

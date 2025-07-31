@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
-
 class ClassifierHead(nn.Module):
 
     def __init__(self: ClassifierHead, config: Namespace, hidden_size: int | None = None) -> None:
@@ -108,7 +107,7 @@ class ModelForSequenceClassification(nn.Module):
             decoder_attention_mask = attention_mask.new_ones((batch_size, 1))
             output_transformer: Any = self.transformer(input_data, attention_mask, decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask)
         else:
-            output_transformer = self.transformer(input_ids=input_data,attention_mask=attention_mask,use_cache=False)
+            output_transformer = self.transformer(input_ids=input_data, attention_mask=attention_mask)
         if type(output_transformer) is tuple:
             encoding: torch.Tensor = output_transformer[0]
         elif isinstance(output_transformer, ModelOutput):
@@ -125,10 +124,12 @@ class ModelForSequenceClassification(nn.Module):
             print(f"Add support for output type: {type(output_transformer)}!")
             exit()
         if self.take_final and not self.enc_dec:
-            final_position: torch.Tensor = attention_mask[:, :, -1].squeeze().long().argmax(-1) - 1
-            transformer_output: torch.Tensor = encoding[final_position].diagonal().t()
+            # last_token_idx: for each sequence, gives index of the last non-pad token
+            last_token_idx = attention_mask.sum(dim=1) - 1  # shape [batch_size,]
+            # encoding: [batch_size, seq_len, hidden_size]
+            transformer_output = encoding[torch.arange(encoding.size(0)), last_token_idx, :]
         else:
-            transformer_output = encoding[:, 0]
+            transformer_output = encoding[:, 0, :]  # [batch_size, hidden_size]
         logits: torch.Tensor = self.classifier(transformer_output)
 
         return logits

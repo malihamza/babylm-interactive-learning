@@ -83,16 +83,13 @@ class Trainer():
         self.model.to(self.device)
         self.ema_model.to(self.device)
         
-        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(self.args.model_name_or_path)
-        # Fix: Assign pad_token if missing
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-            
+        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(self.args.model_name_or_path, revision=self.args.revision_name)
+
     def load_data(self: Trainer) -> None:
         """This function loads the data and creates the
         dataloader for each split of the data.
         """
-        assert self.args.batch_size % self.args.gradient_accumulation == 0, f"The gradient accumualtion {self.args.gradient_accumulation} should divide the batch size {self.args.batch_size}."
+        assert self.args.batch_size % self.args.gradient_accumulation == 0, f"The gradient accumulation {self.args.gradient_accumulation} should divide the batch size {self.args.batch_size}."
 
         self.train_dataloader: DataLoader = _load_labeled_dataset(self.args.train_data, self.args.batch_size // self.args.gradient_accumulation, self.tokenizer, True, True, self.args)
 

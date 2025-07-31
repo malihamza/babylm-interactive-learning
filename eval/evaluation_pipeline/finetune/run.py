@@ -78,7 +78,7 @@ if __name__ == "__main__":
     args: Namespace = _parse_arguments()
 
     seed_everything(args.seed)
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
     model_name: str = args.model_name_or_path.stem
     if args.task == "mnli":
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         args.save_path: pathlib.Path = args.save_dir / model_name / args.task
         args.save_path.mkdir(parents=True, exist_ok=True)
 
-    trainer = Trainer(args, device)
+    trainer = Trainer(args, DEVICE)
     trainer.train()
 
     if trainer.valid_dataloader is not None:

@@ -3,7 +3,7 @@ import numpy as np
 
 from evaluation_pipeline.utils import get_logits
 
-DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
 
 
 def get_p(sentence, word, model, tokenizer):  # gets p of word (word) given context. Relies on model and tokenizer.
