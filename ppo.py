@@ -28,19 +28,19 @@ def main(ppo_cfg, teacher_cfg):
 
 
     # Dataset builders
-    builder1 = WritingPromptsDatasetBuilder(ppo_config, 
-                                            cache_dir=data_path,
-                                        min_len=query_min_length, 
-                                        max_len=query_max_length)
+    # builder1 = WritingPromptsDatasetBuilder(ppo_config, 
+    #                                         cache_dir=data_path,
+    #                                     min_len=query_min_length, 
+    #                                     max_len=query_max_length)
 
 
-    builder2 = TinyStoriesDatasetBuilder(ppo_config, 
+    builder1 = TinyStoriesDatasetBuilder(ppo_config, 
                                             cache_dir=data_path,
                                         min_len=query_min_length, 
                                         max_len=query_max_length)
 
     # Combine datasets
-    combined_dataset = DatasetCombiner([builder1, builder2])
+    combined_dataset = DatasetCombiner([builder1])
     combined_dataset.set_token_limit(token_limit=token_limit)
     combined_dataset = combined_dataset.load()
 

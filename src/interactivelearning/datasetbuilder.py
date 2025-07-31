@@ -137,6 +137,7 @@ class IMDBDatasetBuilder(DatasetBuilder):
             if self.save_cache:
                 logger.info("→ saving cache to %s", cache_path)
                 ds.save_to_disk(cache_path)
+        ds = self._truncate_to_token_limit(ds)                
         ds.set_format(type="torch")
         logger.info("IMDB ready: %d rows", len(ds))
         return ds
@@ -173,6 +174,7 @@ class TinyStoriesDatasetBuilder(DatasetBuilder):
             if self.save_cache:
                 logger.info("→ saving cache to %s", cache_path)
                 ds.save_to_disk(cache_path)
+        ds = self._truncate_to_token_limit(ds)                
         ds.set_format(type="torch")
         logger.info("TinyStories ready: %d rows", len(ds))
         return ds
@@ -224,6 +226,7 @@ class WritingPromptsDatasetBuilder(DatasetBuilder):
             if self.save_cache:
                 logger.info("→ saving cache to %s", cache_path)
                 ds.save_to_disk(cache_path)
+        ds = self._truncate_to_token_limit(ds)
         ds.set_format(type="torch")
         logger.info("WritingPrompts ready: %d rows", len(ds))
         return ds
