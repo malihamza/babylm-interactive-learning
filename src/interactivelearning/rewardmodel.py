@@ -28,7 +28,7 @@ class RandomRewardModel(RewardModel):
         }
 
 
-class Llama3RwardModel(RewardModel):
+class Llama3RewardModel(RewardModel):
     def __init__(self, config):
         super().__init__()
         self.teacher_model = Llama3Teacher(config=config)

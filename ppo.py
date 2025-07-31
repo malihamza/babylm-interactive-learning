@@ -1,5 +1,5 @@
 import yaml
-from src.interactivelearning.rewardmodel import RandomRewardModel, Llama3RwardModel
+from src.interactivelearning.rewardmodel import RandomRewardModel, Llama3RewardModel
 from src.interactivelearning.ppotrainer import CustomPPOTrainer
 from trl import PPOConfig, AutoModelForCausalLMWithValueHead
 from src.interactivelearning.datasetbuilder import IMDBDatasetBuilder, DatasetCombiner, TinyStoriesDatasetBuilder, WritingPromptsDatasetBuilder
@@ -46,7 +46,7 @@ def main(ppo_cfg, teacher_cfg):
 
 
     # Reward model
-    reward_model = Llama3RwardModel(config=teacher_cfg)
+    reward_model = Llama3RewardModel(config=teacher_cfg)
     
 
     model = AutoModelForCausalLMWithValueHead.from_pretrained(ppo_cfg["model_name"])
