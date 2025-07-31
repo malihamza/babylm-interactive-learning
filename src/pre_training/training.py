@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-Train GPT‑2‑small (~124 M params) from scratch on the BabyLM Strict 100 M‑word
+Train GPT‑2‑small (~124 M params) from scratch on the BabyLM Strict 100 M‑word
 corpus.  Checkpoints are saved at the official BabyLM word‑count milestones and
-pushed to the Hugging Face Hub on separate branches (e.g. chck_7M).
+pushed to the Hugging Face Hub on separate branches (e.g. chck_7M).
 
 Usage
 -----
@@ -42,7 +42,7 @@ def retry_hf(fn, max_retries=5, initial_wait=5, *args, **kwargs):
     raise RuntimeError(f"After {max_retries} retries, HuggingFace Hub call failed permanently.")
 
 # ---------------------------------------------------------------------------
-# 1  Command‑line arguments
+# 1  Command‑line arguments
 # ---------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(
@@ -51,7 +51,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--hub_repo", type=str, required=True,
                     help="HF repo ID (username/repo) to push checkpoints & final model.")
 parser.add_argument("--dataset_fraction", type=float, default=1.0,
-                    help="Fraction of the corpus to use (1.0 = full 100 M words).")
+                    help="Fraction of the corpus to use (1.0 = full 100 M words).")
 parser.add_argument("--seq_length", type=int, default=512,
                     help="Context window in tokens.")
 parser.add_argument("--output_dir", type=str, default="babylm_gpt2_small",
@@ -72,31 +72,31 @@ args = parser.parse_args()
 set_seed(args.seed)
 
 if not (0 < args.dataset_fraction <= 1.0):
-    raise ValueError("--dataset_fraction must be within (0, 1].")
+    raise ValueError("--dataset_fraction must be within (0, 1].")
 
 # ---------------------------------------------------------------------------
-# 2  Hub repo setup
+# 2  Hub repo setup
 # ---------------------------------------------------------------------------
 
 api = HfApi()
 api.create_repo(repo_id=args.hub_repo, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# 3  Load BabyLM Strict
+# 3  Load BabyLM Strict
 # ---------------------------------------------------------------------------
 
-print("🡒 Loading BabyLM Strict 100 M‑word corpus (nilq/babylm-100M) …")
+print("🡒 Loading BabyLM Strict 100 M‑word corpus (nilq/babylm-100M) …")
 dataset = load_dataset("nilq/babylm-100M", split="train")
 eval_dataset = load_dataset("nilq/babylm-100M", split="validation")
 
 if args.dataset_fraction < 1.0:
-    dataset = dataset.shuffle(seed=42)
+    dataset = dataset.shuffle(seed=args.seed)
     keep = int(len(dataset) * args.dataset_fraction)
     dataset = dataset.select(range(keep))
     print(f"   Using {keep:,} examples (~{args.dataset_fraction*100:.0f}% of data).")
 
 # ---------------------------------------------------------------------------
-# 4  Tokenizer
+# 4  Tokenizer
 # ---------------------------------------------------------------------------
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
@@ -113,7 +113,7 @@ TOKS_PER_WORD = toks / words if words else 1.0
 print(f"   ≈{TOKS_PER_WORD:.2f} tokens per word (sample).")
 
 # ---------------------------------------------------------------------------
-# 5  Tokenise and chunk into fixed‑length blocks
+# 5  Tokenise and chunk into fixed‑length blocks
 # ---------------------------------------------------------------------------
 
 def tok_fn(ex):
@@ -143,7 +143,7 @@ lm_eval_ds = lm_eval_ds.filter(lambda x: len(x["input_ids"]) == args.seq_length)
 print(f"   Final eval sequences: {len(lm_eval_ds):,} of length {args.seq_length}.")
 
 # ---------------------------------------------------------------------------
-# 6  Model
+# 6  Model
 # ---------------------------------------------------------------------------
 
 config = GPT2Config(
@@ -158,7 +158,7 @@ model = GPT2LMHeadModel(config)
 print(f"🡒 New GPT‑2‑small initialised ({model.num_parameters():,} parameters).")
 
 # ---------------------------------------------------------------------------
-# 7  Training args
+# 7  Training args
 # ---------------------------------------------------------------------------
 
 train_args = TrainingArguments(
@@ -181,7 +181,7 @@ train_args = TrainingArguments(
 )
 
 # ---------------------------------------------------------------------------
-# 8  Milestone checkpoint callback
+# 8  Milestone checkpoint callback
 # ---------------------------------------------------------------------------
 
 class WordMilestoneCB(TrainerCallback):
@@ -200,7 +200,7 @@ class WordMilestoneCB(TrainerCallback):
         super().__init__()
         self.api, self.repo = api, repo
         self.seq_len = seq_len
-        # 1 M..10 M, 20 M..100 M, 200 M..1 B
+        # 1 M..10 M, 20 M..100 M, 200 M..1 B
         ms = list(range(1, 11)) + [i * 10 for i in range(2, 11)] + [i * 100 for i in range(2, 11)]
         self.milestones = ms
         self.milestone_toks = [math.ceil(m * 1_000_000 * tok_per_word) for m in ms]
@@ -243,12 +243,13 @@ class WordMilestoneCB(TrainerCallback):
 milestone_cb = WordMilestoneCB(api, args.hub_repo, args.seq_length, TOKS_PER_WORD,tokenizer)
 
 # ---------------------------------------------------------------------------
-# 9  Trainer & launch
+# 9  Trainer & launch
 # ---------------------------------------------------------------------------
 
 trainer = Trainer(
     model=model, args=train_args,
     train_dataset=lm_ds,
+    eval_dataset=lm_eval_ds,
     tokenizer=tokenizer,
     callbacks=[milestone_cb]
 )
@@ -256,7 +257,7 @@ trainer = Trainer(
 trainer.train()
 
 # ---------------------------------------------------------------------------
-# 10  Push final model
+# 10  Push final model
 # ---------------------------------------------------------------------------
 
 print("\nTraining done – pushing final model to main branch …")
