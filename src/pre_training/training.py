@@ -249,7 +249,7 @@ trainer.train()
 # ---------------------------------------------------------------------------
 
 print("\nTraining done – pushing final model to main branch …")
-model.save_pretrained(args.output_dir)
-tokenizer.save_pretrained(args.output_dir)
-model.push_to_hub(args.hub_repo, commit_message="Final model")
+train_args.save(args.output_dir)
+trainer.save_model(args.output_dir)  # saves model and tokenizer
+retry_hf(trainer.push_to_hub, commit_message="Final model and tokenizer push")
 print(f"Load with:  AutoModel.from_pretrained('{args.hub_repo}')")
