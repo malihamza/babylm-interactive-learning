@@ -2,7 +2,7 @@ import yaml
 from src.interactivelearning.rewardmodel import RandomRewardModel, Llama3RwardModel
 from src.interactivelearning.ppotrainer import CustomPPOTrainer
 from trl import PPOConfig, AutoModelForCausalLMWithValueHead
-from src.interactivelearning.datasetbuilder import IMDBDatasetBuilder, DatasetCombiner, TinyStoriesDatasetBuilder
+from src.interactivelearning.datasetbuilder import IMDBDatasetBuilder, DatasetCombiner, TinyStoriesDatasetBuilder, WritingPromptsDatasetBuilder
 from src.interactivelearning.utils import load_yaml_config
 from src.interactivelearning.ppoconfig import CustomPPOConfig
 
@@ -12,7 +12,7 @@ def main(ppo_cfg, teacher_cfg):
 
     ppo_config = CustomPPOConfig(
         model_name=ppo_cfg["model_name"],
-        learning_rate=ppo_cfg.get("learning_rate", 1.41e-5),
+        learning_rate=float(ppo_cfg.get("learning_rate", 1e-5)),
         log_with=ppo_cfg.get("log_with", None),
         mini_batch_size=ppo_cfg.get("batch_size"),
         batch_size=ppo_cfg.get("batch_size"),
@@ -28,13 +28,19 @@ def main(ppo_cfg, teacher_cfg):
 
 
     # Dataset builders
-    builder1 = TinyStoriesDatasetBuilder(ppo_config, 
+    builder1 = WritingPromptsDatasetBuilder(ppo_config, 
+                                            cache_dir=data_path,
+                                        min_len=query_min_length, 
+                                        max_len=query_max_length)
+
+
+    builder2 = TinyStoriesDatasetBuilder(ppo_config, 
                                             cache_dir=data_path,
                                         min_len=query_min_length, 
                                         max_len=query_max_length)
 
     # Combine datasets
-    combined_dataset = DatasetCombiner([builder1])
+    combined_dataset = DatasetCombiner([builder1, builder2])
     combined_dataset.set_token_limit(token_limit=token_limit)
     combined_dataset = combined_dataset.load()
 

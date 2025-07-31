@@ -24,7 +24,7 @@ data_path: data/ppo/
 output_min_length: 64
 output_max_length: 128
 generation_kwargs:
-  top_k: 20
+  top_k: 80
   top_p: 0.9
   do_sample: true
 
