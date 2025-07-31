@@ -210,6 +210,9 @@ class WordMilestoneCB(TrainerCallback):
 
     def on_step_end(self, args, state, control, **kw):
         # one *optimizer* step has just finished (i.e. after grad‑accum)
+        local_rank = int(os.environ.get('RANK', '0')) # safeguard that only one process of multiGPU pushes to HF
+        if local_rank != 0:
+            return control
         tokens_per_update = (
             args.per_device_train_batch_size
             * args.gradient_accumulation_steps
