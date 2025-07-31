@@ -1,7 +1,4 @@
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 from vllm import LLM, SamplingParams
-import numpy as np
 from src.interactivelearning.logger import logger
 from abc import ABC, abstractmethod
 from jinja2 import Template
@@ -19,9 +16,9 @@ class Teacher(ABC):
         self.model_name = config["model_name_or_path"]
         self.prompt_template = self.load_prompt(config["prompt_template_path"])
         self.sampling_params = SamplingParams(temperature=config["temperature"], max_tokens=config["max_tokens"])
-        self.min_score = config.get("min_score", 1)
-        self.max_score = config.get("max_score", 9)
-        self.default_score = config.get("default_score", 5)
+        # self.min_score = config.get("min_score", 1)
+        # self.max_score = config.get("max_score", 9)
+        self.default_score = config.get("default_score", 0.5)
         logger.info("Initializing teacher model: %s", self.model_name)
         self.load_model()
 
@@ -32,20 +29,20 @@ class Teacher(ABC):
         """
         raise NotImplementedError("Implement model loading logic here")
 
-    def parse_score(self, text: str) -> int:
+    def parse_reward(self, text: str) -> float:
         """
-        Extracts the first integer in the model's output using regex.
-        Enforces the score to be within the configured range.
+        Parses the output string for all integers in [0,3], sums, and normalizes to [0,1].
         """
-        match = re.search(r"\b(\d+)\b", text)
-        if match:
-            score = int(match.group(1))
-            bounded_score = max(self.min_score, min(score, self.max_score))
-            logger.debug("Parsed score: %d (bounded to %d)", score, bounded_score)
-            return bounded_score
-        else:
-            logger.error("No valid score found in model output: '%s'", text)
-            raise ValueError(f"No valid score found in model output: '{text}'")
+        # Extract all numbers (as strings)
+        numbers = re.findall(r"\b\d+\b", text)
+        if not numbers:
+            logger.warning("No valid scores found in output: '%s', returning 0.5", text)
+            return self.default_score  
+        # Clamp to [0,3] and convert to int
+        scores = [max(0, min(int(n), 3)) for n in numbers]
+        total = sum(scores)
+        normalized = total / 9
+        return normalized
 
     @staticmethod
     def load_prompt(prompt_template_path: str) -> Template:
@@ -72,48 +69,51 @@ class Teacher(ABC):
         """
         logger.debug("Preparing input for LLM using sample: %s", sample)
         user_prompt = self.prompt_template.render(
-            context=sample.prompt,
-            continuation=sample.completion,
-            min_score=self.min_score,
-            max_score=self.max_score
+            student_completion=sample.completion,
         )
 
         return [{"role": "user", "content": user_prompt}]
 
-    def evaluate_batch(self, batch: List[PromptCompletionPair]) -> List[int]:
+    def evaluate_batch(self, batch: List[PromptCompletionPair]):
         logger.debug("Evaluating batch of %d samples", len(batch))
-
         messages_batch = [self.prepare_llm_input(sample) for sample in batch]
-
+        
         try:
             results = self.model.chat(messages_batch, self.sampling_params, use_tqdm=False)
         except Exception as e:
             logger.error("LLM chat failed for batch of %d samples: %s", len(batch), str(e))
             logger.debug("Returning default values for the entire batch")
-            return [self.default_score] * len(batch)
 
-        outputs = []
+            return (
+                [self.default_score] * len(batch),  
+                [""] * len(batch),              
+                0                               
+            )
+
+        raw_outputs = []
+        rewards = []
+        total_length = 0
+
         for r in results:
             try:
                 text = r.outputs[0].text.strip()
             except Exception as e:
                 logger.warning("Failed to extract output text: %s", str(e))
                 text = ""
-            outputs.append(text)
-
-        scores = []
-        for output in outputs:
+            raw_outputs.append(text)
             try:
-                score = self.parse_score(output)
+                reward = self.parse_reward(text)
             except Exception as e:
-                logger.warning("Score parsing failed for output '%s': %s", output, str(e))
-                score = self.default_score
-            scores.append(score)
+                logger.warning("Score parsing failed for output '%s': %s", text, str(e))
+                reward = self.default_score
+            rewards.append(reward)
+            total_length += len(text)
 
-        logger.debug("Outputs: %s", outputs)
-        logger.debug("Scores: %s", scores)
+        logger.debug("Raw outputs: %s", raw_outputs)
+        logger.debug("Rewards: %s", rewards)
+        logger.debug("Total char length: %s", total_length)
 
-        return scores
+        return rewards, raw_outputs, total_length
 
 
 

@@ -1,38 +1,33 @@
-# Story Evaluation Task
+You are a critical teacher tasked with grading a student story.
+Score the story on each of these three categories on a scale from 0 to 3,
+where 0 is the worst and 3 is the best.
 
-You are given a short story consisting of a **context** and its **continuation**. Your task is to evaluate the quality of the continuation based on the following criteria:
+Grammatical Correctness:
+0 - Frequent and severe grammar mistakes; difficult to understand.
+1 - Noticeable grammar issues; somewhat understandable.
+2 - Few minor grammar mistakes; mostly clear and well-formed.
+3 - Flawless grammar and syntax; very easy to read.
 
-## Evaluation Criteria
+Narrative Coherence:
+0 - There is no story. Incoherent and disjointed.
+1 - Some parts do not flow logically; narrative is confusing at times.
+2 - Mostly coherent narrative with minor lapses.
+3 - Very coherent and logically structured story.
 
-1. **Grammatical Correctness** (weight: 0.7)  
-   Is the continuation free from grammatical or syntactic errors?
+Creativity:
+0 - Completely uninspired or cliché; no original ideas;
+    or just incomprehensible.
+1 - Some attempts at originality; limited creativity.
+2 - Fairly creative and engaging.
+3 - Highly original, imaginative, and engaging.
 
-2. **Narrative Coherence** (weight: 0.2)  
-   Does the continuation logically and smoothly follow the context?
+Provide your scores in the format:
+Grammar, Narrative, Creativity = _ _ _
 
-3. **Creativity** (weight: 0.1)  
-   Is the continuation imaginative or original?
+Respond ONLY with this sequence of three numbers
+without any extra text or explanation.
 
-Each criterion contributes to the final score according to the weight specified.
+Student Story:
+`{{student_completion}}`
 
----
-
-## Input
-
-**Context:**  
-`{{context}}`
-
-**Continuation:**  
-`{{continuation}}`
-
----
-
-## Instructions
-
-- Evaluate the continuation based on the three criteria above.
-- Respond with a **single integer between `{{min_score}}` and `{{max_score}}`**, where:
-  - `{{min_score}}` = Very poor quality  
-  - `{{max_score}}` = Excellent quality
-- Respond **only** with the score. Do **not** include any explanation or comments.
-
----
+Grammar, Narrative, Creativity =

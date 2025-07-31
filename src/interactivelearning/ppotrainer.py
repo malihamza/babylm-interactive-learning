@@ -201,8 +201,14 @@ class CustomPPOTrainer(PPOTrainer):
                     break
 
                 pairs = [PromptCompletionPair(q, r) for q, r in zip(batch["query"], dec_resp)]
-                rewards = self.reward_fn(pairs)
-                reward_words = len(rewards)
+
+                rewards_dict = self.reward_fn(pairs)
+                rewards = rewards_dict["rewards"]
+                teacher_model_raw_ouput = rewards_dict["raw_outputs"]
+                reward_words = rewards_dict["total_length"]
+
+
+
                 if prompt_used + query_words + reward_words > self.word_budget:
                     break
 
@@ -215,7 +221,7 @@ class CustomPPOTrainer(PPOTrainer):
                 gen_used += resp_words
                 total_prompt_words += delta_prompt
 
-                self.generated_log.extend((r, float(rew)) for r, rew in zip(dec_resp, rewards))
+                self.generated_log.extend((r, float(rew)) for r, rew in zip(dec_resp, teacher_model_raw_ouput))
 
 
                 if total_prompt_words >= next_ckpt:
