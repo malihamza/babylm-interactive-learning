@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH -n 1
+#SBATCH -c 16
+#SBATCH --gres=gpu:A100:1
+#SBATCH --time=00:30:00
+#SBATCH --job-name="BLM_eval_1000M"
+#SBATCH --output=logs/eval/babylm_eval_%j.log
+#SBATCH --partition=react
+#SBATCH --mail-type=BEGIN,END,FAIL
+
+set -euo pipefail
+
+echo "[INFO] HOST: $(hostname)"
+echo "[INFO] Job ID: ${SLURM_JOB_ID:-local}"
+echo "[INFO] MODEL_PATH: $MODEL_PATH"
+echo "[INFO] REVISION_NAME: $REVISION_NAME"
+echo "[INFO] BACKEND: $BACKEND"
+
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    module purge
+    module load zstd/1.5.6 gcc/13.2.0 cuda/12.6.2 python/3.11.9
+    module load miniforge3
+    # === Source conda ===
+    # on SCC
+    CONDA_EXE_PATH=$(which conda)
+    CONDA_BASE=$(dirname $(dirname "$CONDA_EXE_PATH"))
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    # on REACT
+    #source $CONDA_PREFIX/etc/profile.d/conda.sh
+    # === ===
+    conda activate venv_hpc_blm
+    echo "[INFO] Activated virtualenv at venv_hpc_blm"
+fi
+
+# Call the single eval script for chck_1000M
+bash "$EVAL_SCRIPT" "$MODEL_PATH" "$REVISION_NAME" "$BACKEND"
+
+echo "[INFO] 1000M eval job completed."

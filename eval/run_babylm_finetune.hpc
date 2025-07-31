@@ -1,0 +1,55 @@
+#!/bin/bash
+#SBATCH -n 1
+#SBATCH -c 32
+#SBATCH --gres=gpu:A100:1
+#SBATCH --time=05:00:00
+#SBATCH --job-name="BLM_finetune"
+#SBATCH --output=logs/finetune/finetune__%j.log
+#SBATCH --partition=react
+#SBATCH --mail-type=BEGIN,END,FAIL
+
+set -euo pipefail
+
+# Optional: print context
+echo "[INFO] Model path: $MODEL_PATH"
+echo "[INFO] Learning rate: $LR"
+echo "[INFO] Batch size: $BSZ"
+echo "[INFO] Big batch size: $BIG_BSZ"
+echo "[INFO] Max epochs: $MAX_EPOCHS"
+echo "[INFO] Revision: $REVISION_NAME"
+echo "[INFO] Seed: $SEED"
+
+# ========== ENVIRONMENT SETUP =========
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    module purge
+    module load zstd/1.5.6 gcc/13.2.0 cuda/12.6.2 python/3.11.9  # cluster-specific modules
+    module load miniforge3
+    # === Source conda ===
+    # on SCC
+    CONDA_EXE_PATH=$(which conda)
+    CONDA_BASE=$(dirname $(dirname "$CONDA_EXE_PATH"))
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    # on REACT
+    #source $CONDA_PREFIX/etc/profile.d/conda.sh
+    # === ===
+    conda activate venv_hpc_blm
+    echo "[INFO] Activated virtualenv at venv_hpc_blm"
+else
+    echo "[INFO] SLURM environment not detected. Skipping module/venv activation."
+fi
+
+# ========== Load HF and wandb credentials ==========
+if [ -f ".env" ]; then
+    source ".env"
+fi
+echo "Environment Check"
+if [[ -z "${HF_TOKEN:-}" ]]; then
+    warning "HF_TOKEN is not set! HuggingFace authentication will fail if accessing gated models."
+fi
+if [[ -z "${WANDB_API_KEY:-}" ]]; then
+    warning "WANDB_API_KEY is not set! WandB logging may fail."
+fi
+
+# ========== RUN SCRIPT ==========
+bash eval_finetuning.sh "$MODEL_PATH" "$LR" "$BSZ" "$BIG_BSZ" "$MAX_EPOCHS" "$REVISION_NAME" "$SEED"
+

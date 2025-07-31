@@ -1,0 +1,61 @@
+#!/bin/bash
+#SBATCH -n 1
+#SBATCH -c 16
+#SBATCH --gres=gpu:A100:1
+#SBATCH --time=00:15:00
+#SBATCH --job-name="BLM_eval_all"
+#SBATCH --output=logs/eval_fast/babylm_eval_fast_%A_%a.log
+#SBATCH --partition=react
+#SBATCH --array=0-27%8
+#SBATCH --mail-type=BEGIN,END,FAIL
+
+set -euo pipefail
+
+echo "[INFO] HOST: $(hostname)"
+echo "[INFO] Job ID: ${SLURM_JOB_ID:-local}"
+echo "[INFO] SLURM_ARRAY_TASK_ID: ${SLURM_ARRAY_TASK_ID}"
+echo "[INFO] MODEL_PATH: $MODEL_PATH"
+echo "[INFO] BACKEND: $BACKEND"
+
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    module purge
+    module load zstd/1.5.6 gcc/13.2.0 cuda/12.6.2 python/3.11.9
+    module load miniforge3
+    # === Source conda ===
+    # on SCC
+    CONDA_EXE_PATH=$(which conda)
+    CONDA_BASE=$(dirname $(dirname "$CONDA_EXE_PATH"))
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    # on REACT
+    #source $CONDA_PREFIX/etc/profile.d/conda.sh
+    # === ===
+    conda activate venv_hpc_blm
+    echo "[INFO] Activated virtualenv at venv_hpc_blm"
+fi
+
+# ========== Load HF and wandb credentials ==========
+if [ -f ".env" ]; then
+    source ".env"
+fi
+echo "Environment Check"
+if [[ -z "${HF_TOKEN:-}" ]]; then
+    warning "HF_TOKEN is not set! HuggingFace authentication will fail if accessing gated models."
+fi
+if [[ -z "${WANDB_API_KEY:-}" ]]; then
+    warning "WANDB_API_KEY is not set! WandB logging may fail."
+fi
+
+# ========== RUN SCRIPT ==========
+
+# The next line sets the path to your checkpoint list file.
+CHECKPOINT_FILE="${SLURM_SUBMIT_DIR:-.}/checkpoints.txt"
+
+# Extract the correct checkpoint name
+CHECKPOINT=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "$CHECKPOINT_FILE")
+echo "[INFO] Running checkpoint: $CHECKPOINT"
+
+echo "[INFO] Running $EVAL_SCRIPT on $CHECKPOINT"
+bash "$EVAL_SCRIPT" "$MODEL_PATH" "$CHECKPOINT" "$BACKEND"
+
+echo "[INFO] Done with $CHECKPOINT"
+

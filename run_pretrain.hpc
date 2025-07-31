@@ -1,0 +1,56 @@
+#!/bin/bash
+#SBATCH -n 1
+#SBATCH -c 32
+#SBATCH --gres=gpu:A100:4
+#SBATCH --time=12:00:00
+#SBATCH --job-name="GPT2_BLM"
+#SBATCH --output=logs/gpt2/gpt2_train_%j.log
+#SBATCH --partition=scc-gpu
+#SBATCH --mail-type=BEGIN,END,FAIL
+
+set -euo pipefail
+
+# ========== ENVIRONMENT SETUP ==========
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    module purge
+    module load zstd/1.5.6 gcc/13.2.0 cuda/12.6.2 python/3.11.9
+    module load miniforge3
+    # === Source conda ===
+    CONDA_EXE_PATH=$(which conda)
+    CONDA_BASE=$(dirname $(dirname "$CONDA_EXE_PATH"))
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    conda activate venv_hpc_blm
+    echo "[INFO] Activated virtualenv at venv_hpc"
+else
+    echo "[INFO] SLURM environment not detected. Skipping module/venv activation."
+fi
+
+# ========== Load HF and wandb credentials ==========
+if [ -f ".env" ]; then
+    source ".env"
+fi
+echo "Environment Check"
+if [[ -z "${HF_TOKEN:-}" ]]; then
+    echo "[WARNING] HF_TOKEN is not set! HuggingFace authentication will fail if accessing gated models."
+fi
+if [[ -z "${WANDB_API_KEY:-}" ]]; then
+    echo "[WARNING] WANDB_API_KEY is not set! WanDB logging may fail."
+fi
+WANDB_PROJECT="BLM_pretraining"
+
+# ========== RUN SCRIPT ==========
+
+SEED=41
+
+torchrun --nproc_per_node=4 src/pre_training/training.py \
+  --hub_repo llm-slice/babylm-gpt2-small-90M-seed${SEED} \
+  --output_dir babylm-gpt2-small-90M-seed${SEED} \
+  --dataset_fraction 0.9 \
+  --epochs 10 \
+  --batch_size 16 \
+  --grad_accum_steps 4 \
+  --learning_rate 5e-4 \
+  --bf16 \
+  --seed $SEED
+
+echo "[INFO] GPT-2 training complete."
