@@ -4,16 +4,20 @@ MODEL_PATH=$1
 LR=${2:-3e-5}           # default: 3e-5
 BSZ=${3:-32}            # default: 32
 BIG_BSZ=${4:-16}        # default: 16
-MAX_EPOCHS=${4:-10}     # default: 10
-WSC_EPOCHS=${5:-30}     # default: 30
-SEED=${5:-42}           # default: 42
+MAX_EPOCHS=${5:-10}     # default: 10
+REVISION_NAME=${6:-"main"}  # default: "main"
+SEED=${7:-42}           # default: 42
+
+# WANDB parameters
+WANDB_PROJECT="BLM_eval_finetuning"
 
 model_basename=$(basename $MODEL_PATH)
 
 for task in {boolq,multirc}; do
-        
-    python3 -m evaluation_pipeline.finetune.run \
+    EXP_NAME="$task"
+    python -m evaluation_pipeline.finetune.run \
         --model_name_or_path "$MODEL_PATH" \
+        --revision_name "$REVISION_NAME" \
         --train_data "evaluation_data/full_eval/glue_filtered/$task.train.jsonl" \
         --valid_data "evaluation_data/full_eval/glue_filtered/$task.valid.jsonl" \
         --predict_data "evaluation_data/full_eval/glue_filtered/$task.valid.jsonl" \
@@ -29,11 +33,19 @@ for task in {boolq,multirc}; do
         --metrics accuracy f1 mcc \
         --metric_for_valid accuracy \
         --seed $SEED \
+        --wandb \
+        --wandb_project "$WANDB_PROJECT" \
+        --wandb_entity "$WANDB_ENTITY" \
+        --exp_name "$EXP_NAME" \
+        --take_final \
         --verbose
 done
 
-python3 -m evaluation_pipeline.finetune.run \
+EXP_NAME="rte"
+
+python -m evaluation_pipeline.finetune.run \
     --model_name_or_path "$MODEL_PATH" \
+    --revision_name "$REVISION_NAME" \
     --train_data "evaluation_data/full_eval/glue_filtered/rte.train.jsonl" \
     --valid_data "evaluation_data/full_eval/glue_filtered/rte.valid.jsonl" \
     --predict_data "evaluation_data/full_eval/glue_filtered/rte.valid.jsonl" \
@@ -49,10 +61,18 @@ python3 -m evaluation_pipeline.finetune.run \
     --metrics accuracy f1 mcc \
     --metric_for_valid accuracy \
     --seed $SEED \
+    --wandb \
+    --wandb_project "$WANDB_PROJECT" \
+    --wandb_entity "$WANDB_ENTITY" \
+    --exp_name "$EXP_NAME" \
+    --take_final \
     --verbose
 
-python3 -m evaluation_pipeline.finetune.run \
+EXP_NAME="wsc"
+
+python -m evaluation_pipeline.finetune.run \
     --model_name_or_path "$MODEL_PATH" \
+    --revision_name "$REVISION_NAME" \
     --train_data "evaluation_data/full_eval/glue_filtered/wsc.train.jsonl" \
     --valid_data "evaluation_data/full_eval/glue_filtered/wsc.valid.jsonl" \
     --predict_data "evaluation_data/full_eval/glue_filtered/wsc.valid.jsonl" \
@@ -68,12 +88,18 @@ python3 -m evaluation_pipeline.finetune.run \
     --metrics accuracy f1 mcc \
     --metric_for_valid accuracy \
     --seed $SEED \
+    --wandb \
+    --wandb_project "$WANDB_PROJECT" \
+    --wandb_entity "$WANDB_ENTITY" \
+    --exp_name "$EXP_NAME" \
+    --take_final \
     --verbose
 
 for task in {mrpc,qqp}; do
-        
-    python3 -m evaluation_pipeline.finetune.run \
+    EXP_NAME="$task"
+    python -m evaluation_pipeline.finetune.run \
         --model_name_or_path "$MODEL_PATH" \
+        --revision_name "$REVISION_NAME" \
         --train_data "evaluation_data/full_eval/glue_filtered/$task.train.jsonl" \
         --valid_data "evaluation_data/full_eval/glue_filtered/$task.valid.jsonl" \
         --predict_data "evaluation_data/full_eval/glue_filtered/$task.valid.jsonl" \
@@ -89,11 +115,19 @@ for task in {mrpc,qqp}; do
         --metrics accuracy f1 mcc \
         --metric_for_valid f1 \
         --seed $SEED \
+        --wandb \
+        --wandb_project "$WANDB_PROJECT" \
+        --wandb_entity "$WANDB_ENTITY" \
+        --exp_name "$EXP_NAME" \
+        --take_final \
         --verbose
 done
 
-python3 -m evaluation_pipeline.finetune.run \
+EXP_NAME="mnli"
+
+python -m evaluation_pipeline.finetune.run \
     --model_name_or_path "$MODEL_PATH" \
+    --revision_name "$REVISION_NAME" \
     --train_data "evaluation_data/full_eval/glue_filtered/mnli.train.jsonl" \
     --valid_data "evaluation_data/full_eval/glue_filtered/mnli.valid.jsonl" \
     --predict_data "evaluation_data/full_eval/glue_filtered/mnli.valid.jsonl" \
@@ -109,4 +143,9 @@ python3 -m evaluation_pipeline.finetune.run \
     --metrics accuracy \
     --metric_for_valid accuracy \
     --seed $SEED \
+    --wandb \
+    --wandb_project "$WANDB_PROJECT" \
+    --wandb_entity "$WANDB_ENTITY" \
+    --exp_name "$EXP_NAME" \
+    --take_final \
     --verbose

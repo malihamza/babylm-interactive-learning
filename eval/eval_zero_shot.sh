@@ -1,0 +1,21 @@
+#!/bin/bash
+
+MODEL_PATH=$1
+REVISION_NAME=${2:-"main"}   # (e.g. chck_900M)
+BACKEND=$3
+EVAL_DIR=${4:-"evaluation_data/full_eval"}
+
+if [[ "$BACKEND" == *"enc_dec"* ]]; then
+    BACKEND_READ="enc_dec"
+else
+    BACKEND_READ=$BACKEND
+fi
+
+echo $BACKEND_READ
+
+python -m evaluation_pipeline.sentence_zero_shot.run --model_path_or_name $MODEL_PATH --backend $BACKEND --task blimp --data_path "${EVAL_DIR}/blimp_filtered" --save_predictions --revision_name $REVISION_NAME
+python -m evaluation_pipeline.sentence_zero_shot.run --model_path_or_name $MODEL_PATH --backend $BACKEND --task blimp --data_path "${EVAL_DIR}/supplement_filtered" --save_predictions --revision_name $REVISION_NAME
+python -m evaluation_pipeline.sentence_zero_shot.run --model_path_or_name $MODEL_PATH --backend $BACKEND --task ewok --data_path "${EVAL_DIR}/ewok_filtered" --save_predictions --revision_name $REVISION_NAME
+python -m evaluation_pipeline.sentence_zero_shot.run --model_path_or_name $MODEL_PATH --backend $BACKEND --task entity_tracking --data_path "${EVAL_DIR}/entity_tracking" --save_predictions --revision_name $REVISION_NAME
+python -m evaluation_pipeline.sentence_zero_shot.run --model_path_or_name $MODEL_PATH --backend $BACKEND --task wug --data_path "${EVAL_DIR}/wug_adj_nominalization" --save_predictions --revision_name $REVISION_NAME
+python -m evaluation_pipeline.reading.run --model_path_or_name $MODEL_PATH --backend $BACKEND_READ --data_path "${EVAL_DIR}/reading/reading_data.csv" --revision_name $REVISION_NAME
