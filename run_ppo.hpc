@@ -23,8 +23,8 @@ if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     # on REACT
     #source $CONDA_PREFIX/etc/profile.d/conda.sh
     # === ===
-    conda activate venv_hpc
-    echo "[INFO] Activated virtualenv at venv_hpc"
+    conda activate venv_hpc_blm
+    echo "[INFO] Activated virtualenv at venv_hpc_blm"
 else
     echo "[INFO] SLURM environment not detected. Skipping module/venv activation."
 fi
