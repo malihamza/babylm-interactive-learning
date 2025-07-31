@@ -4,6 +4,7 @@ class CustomPPOConfig(PPOConfig):
     def __init__(
         self,
         *args,
+        revision_name=None,
         token_limit=None,
         checkpoint_interval=10000,
         output_min_length=4,
@@ -11,6 +12,7 @@ class CustomPPOConfig(PPOConfig):
         **kwargs
     ):
         super().__init__(*args, **kwargs)
+        self.revision_name = revision_name
         self.token_limit = token_limit
         self.checkpoint_interval = checkpoint_interval
         self.output_min_length = output_min_length
