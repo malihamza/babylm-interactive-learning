@@ -36,7 +36,7 @@ class DatasetBuilder(ABC):
     ) -> None:
         self.config = config
         self.dataset_name = dataset_name
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(config.model_name, revision=config.revision_name)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.input_size_sampler = LengthSampler(min_len, max_len)

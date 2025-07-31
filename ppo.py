@@ -12,6 +12,7 @@ def main(ppo_cfg, teacher_cfg):
 
     ppo_config = CustomPPOConfig(
         model_name=ppo_cfg["model_name"],
+        revision_name=ppo_cfg["revision_name"],
         learning_rate=float(ppo_cfg.get("learning_rate", 1e-5)),
         log_with=ppo_cfg.get("log_with", None),
         mini_batch_size=ppo_cfg.get("batch_size"),
@@ -49,8 +50,8 @@ def main(ppo_cfg, teacher_cfg):
     reward_model = Llama3RewardModel(config=teacher_cfg)
     
 
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(ppo_cfg["model_name"])
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(ppo_cfg["model_name"])
+    model = AutoModelForCausalLMWithValueHead.from_pretrained(ppo_cfg["model_name"], revision=ppo_cfg["revision_name"])
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(ppo_cfg["model_name"], revision=ppo_cfg["revision_name"])
     tokenizer = builder1.tokenizer
 
     trainer = CustomPPOTrainer(

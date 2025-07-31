@@ -1,4 +1,5 @@
-model_name: gpt2
+model_name: llm-slice/babylm-gpt2-small-90M-seed41
+revision_name: chck_900M
 learning_rate: 1e-5
 log_with: wandb
 hf_org" : llm-slice
@@ -28,4 +29,3 @@ generation_kwargs:
   top_p: 0.9
   do_sample: true
 
-//: TODO Store the mdoel in direcoty name gpt_ppo_90M/meta_data, model/ checkpoints_
