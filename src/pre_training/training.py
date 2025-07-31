@@ -25,6 +25,22 @@ from transformers import (
 )
 from huggingface_hub import HfApi
 
+import time
+
+def retry_hf(fn, max_retries=5, initial_wait=5, *args, **kwargs):
+    """Retry Hugging Face Hub operations on network/server errors."""
+    attempts = 0
+    wait = initial_wait
+    while attempts < max_retries:
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            attempts += 1
+            print(f"[WARN] HuggingFace Hub call failed: {e}. Retrying ({attempts}/{max_retries}) in {wait}s …")
+            time.sleep(wait)
+            wait *= 2  # exponential backoff
+    raise RuntimeError(f"After {max_retries} retries, HuggingFace Hub call failed permanently.")
+
 # ---------------------------------------------------------------------------
 # 1  Command‑line arguments
 # ---------------------------------------------------------------------------
@@ -201,10 +217,11 @@ class WordMilestoneCB(TrainerCallback):
             self.tokenizer.save_pretrained(ckpt_dir)
 
             print(f"\n★  Push checkpoint  ≈{words:,} words  →  {branch}")
-            self.api.create_branch(repo_id=self.repo, branch=branch, exist_ok=True)
-            self.api.upload_folder(repo_id=self.repo, folder_path=ckpt_dir, repo_type="model",
-                                   revision=branch,
-                                   commit_message=f"Checkpoint at {words:,} words")
+            retry_hf(self.api.create_branch, repo_id=self.repo, branch=branch, exist_ok=True)
+            retry_hf(self.api.upload_folder,
+                     repo_id=self.repo, folder_path=ckpt_dir, repo_type="model",
+                     revision=branch,
+                     commit_message=f"Checkpoint at {words:,} words")
             shutil.rmtree(ckpt_dir, ignore_errors=True)
             self.i += 1
         return control
