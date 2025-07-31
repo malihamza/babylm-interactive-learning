@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datasets import load_dataset
 from transformers import (
     GPT2Config, GPT2TokenizerFast, GPT2LMHeadModel,
-    Trainer, TrainingArguments, TrainerCallback
+    Trainer, TrainingArguments, TrainerCallback, set_seed
 )
 from huggingface_hub import HfApi
 
@@ -66,8 +66,10 @@ parser.add_argument("--learning_rate", type=float, default=5e-5,
                     help="AdamW learning rate.")
 parser.add_argument("--fp16", action="store_true", help="Enable FP16 training.")
 parser.add_argument("--bf16", action="store_true", help="Enable BF16 training (Ampere+).")
+parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
 
 args = parser.parse_args()
+set_seed(args.seed)
 
 if not (0 < args.dataset_fraction <= 1.0):
     raise ValueError("--dataset_fraction must be within (0, 1].")
@@ -103,7 +105,7 @@ tokenizer.pad_token = tokenizer.eos_token
 eos_id = tokenizer.eos_token_id
 
 # Estimate token/word ratio for checkpoint schedule
-sample = dataset.shuffle(seed=0).select(range(min(10_000, len(dataset))))["text"]
+sample = dataset.shuffle(args.seed).select(range(min(10_000, len(dataset))))["text"]
 words = sum(len(t.split()) for t in sample)
 toks = sum(len(tokenizer(t, add_special_tokens=False)["input_ids"]) for t in sample)
 TOKS_PER_WORD = toks / words if words else 1.0
@@ -166,7 +168,8 @@ train_args = TrainingArguments(
     logging_strategy="steps", 
     logging_steps=100,
     save_strategy="no",
-    report_to=["none"],
+    report_to=["wandb"],
+    seed=args.seed,
 )
 
 # ---------------------------------------------------------------------------
