@@ -14,7 +14,7 @@ token_limit: 2000
 save_base_dir: saved_models/
 
 
-#query settings
+#query settings (range for sampling length of student input)
 query_min_length: 64
 query_max_length: 128
 
@@ -22,9 +22,9 @@ query_max_length: 128
 data_path: data/ppo/
 
 # Output generation
-output_min_length: 64
-output_max_length: 128
 generation_kwargs:
+  min_new_tokens: 64
+  max_new_tokens: 128
   top_k: 80
   top_p: 0.9
   do_sample: true

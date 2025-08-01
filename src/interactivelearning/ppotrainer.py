@@ -74,14 +74,9 @@ class CustomPPOTrainer(PPOTrainer):
         name_with_budget = f"{base_name}_ppo_{fmt_tokens(word_budget)}"
         self.repo_id = f"{hf_org}/{name_with_budget}" if hf_org else name_with_budget
 
-        
-
-        self.len_sampler = LengthSampler(
-            getattr(config, "output_min_length", 4),
-            getattr(config, "output_max_length", 16),
-        )
         self.gen_kwargs = {
-            "min_length": -1,
+            "min_new_tokens": 0,
+            "max_new_tokens": 64,
             "top_k": 0,
             "top_p": 1.0,
             "do_sample": True,
@@ -191,7 +186,6 @@ class CustomPPOTrainer(PPOTrainer):
 
                 gens = self.generate(
                     queries,
-                    max_new_tokens=max(self.len_sampler() for _ in queries),
                     **self.gen_kwargs,
                 )
                 resp_only = [g[len(q):] for g, q in zip(gens, queries)]
