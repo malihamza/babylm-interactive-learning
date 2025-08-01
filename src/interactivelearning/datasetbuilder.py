@@ -15,6 +15,12 @@ def sanitize_dataset_name(name: str) -> str:
     return name.replace("/", "_").replace(" ", "_")
 
 
+
+def is_not_empty(example, field_name="input_ids", pad_token_id=0):
+    ids = example.get(field_name, [])
+    return len(ids) > 0 and any(x != pad_token_id for x in ids)
+
+
 class DatasetBuilder(ABC):
     """Base builder with optional batched tokenisation.
 
@@ -174,6 +180,8 @@ class TinyStoriesDatasetBuilder(DatasetBuilder):
             if self.save_cache:
                 logger.info("→ saving cache to %s", cache_path)
                 ds.save_to_disk(cache_path)
+
+        ds = ds.filter(lambda ex: is_not_empty(ex, field_name="input_ids", pad_token_id=self.tokenizer.pad_token))
         ds = self._truncate_to_token_limit(ds)                
         ds.set_format(type="torch")
         logger.info("TinyStories ready: %d rows", len(ds))

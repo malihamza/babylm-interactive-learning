@@ -25,7 +25,7 @@ data_path: data/ppo/
 generation_kwargs:
   min_new_tokens: 64
   max_new_tokens: 128
-  top_k: 80
-  top_p: 0.9
+  top_k: 0
+  top_p: 1
   do_sample: true
 

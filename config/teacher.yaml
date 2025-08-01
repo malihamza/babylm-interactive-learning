@@ -1,4 +1,4 @@
-model_name_or_path: "meta-llama/Llama-3.2-1B-Instruct"
+model_name_or_path: "meta-llama/Llama-3.2-3B-Instruct"
 prompt_template_path: "prompts/teacher_prompt.md"
 temperature: 0.2
 max_tokens: 6
