@@ -23,6 +23,6 @@ runs/
 
 saved_models/
 
-evaluation-pipeline-2025/models/
-evaluation-pipeline-2025/results/
-evaluation-pipeline-2025/evaluation_data/
+eval/models/
+eval/results/
+eval/evaluation_data/
