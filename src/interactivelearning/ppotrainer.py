@@ -14,7 +14,7 @@ from src.interactivelearning.logger import logger
 from src.interactivelearning.schemas import PromptCompletionPair
 import shutil
 from huggingface_hub import HfApi
-
+import wandb
 
 def fmt_tokens(n: int) -> str:
     if n >= 1_000_000:
@@ -53,6 +53,10 @@ class CustomPPOTrainer(PPOTrainer):
         word_budget: int = 100_000_000,
         gen_word_budget: int = 100_000_000,
         save_base_dir: str | None = None,
+        
+        wandb_project: str | None = None,
+        wandb_tags: list[str] | None = None,
+        watch_model: bool = False,   
     ) -> None:
         super().__init__(
             config,
@@ -101,6 +105,18 @@ class CustomPPOTrainer(PPOTrainer):
         logger.info(self.meta_dir)
         
         os.makedirs(self.meta_dir, exist_ok=True)
+
+        self.wandb_enabled = wandb_project is not None
+        if self.wandb_enabled:
+            run_name = (hf_base_repo or config.model_name).replace("/", "-")
+            wandb.init(
+                project=wandb_project,
+                name=run_name,
+                tags=wandb_tags,
+                config={"word_budget": word_budget, "gen_word_budget": gen_word_budget, **config.__dict__},
+            )
+            if watch_model:
+                wandb.watch(self.model, log="all", log_freq=1_000)
 
 
     def set_generation_kwargs(self, **kwargs):
@@ -160,7 +176,6 @@ class CustomPPOTrainer(PPOTrainer):
         logger.info("Logs saved → %s", self.meta_dir)
 
 
-
     def run_training_loop(self, num_epochs: int = 1):
         logger.info(
             "Start training w/ budgets: prompt=%d, gen=%d (per epoch=%d)",
@@ -169,80 +184,100 @@ class CustomPPOTrainer(PPOTrainer):
             num_epochs,
         )
 
-        total_prompt_words = 0
-        next_ckpt = schedule_next_ckpt(0)
+        global_step         = 0          
+        total_prompt_words  = 0
+        next_ckpt           = schedule_next_ckpt(0)
 
         for epoch in range(num_epochs):
             prompt_used = 0
-            gen_used = 0
+            gen_used    = 0
             logger.info("Epoch %d/%d …", epoch + 1, num_epochs)
 
-            for batch in tqdm(self.dataloader, desc=f"epoch {epoch+1}/{num_epochs}"):
-                
-                if prompt_used >= self.word_budget or gen_used >= self.gen_word_budget:
-                    logger.info("Budget hit → epoch done")
-                    break
+            for batch_idx, batch in enumerate(
+                tqdm(self.dataloader, desc=f"epoch {epoch+1}/{num_epochs}")
+            ):
+                try:
 
-                queries = batch["input_ids"]
-                query_words = sum(len(q.split()) for q in batch["query"])
-                if prompt_used + query_words > self.word_budget:
-                    break
+                    if prompt_used >= self.word_budget or gen_used >= self.gen_word_budget:
+                        logger.info("Budget hit → epoch done")
+                        break
 
+                    queries      = batch["input_ids"]
+                    query_words  = sum(len(q.split()) for q in batch["query"])
+                    if prompt_used + query_words > self.word_budget:
+                        continue  
 
-                gens = self.generate(
-                    queries,
-                    max_new_tokens=max(self.len_sampler() for _ in queries),
-                    **self.gen_kwargs,
-                )
-                resp_only = [g[len(q):] for g, q in zip(gens, queries)]
-                dec_resp = [self.tokenizer.decode(r) for r in resp_only]
-                resp_words = sum(len(r.split()) for r in dec_resp)
-                if gen_used + resp_words > self.gen_word_budget:
-                    break
-                
-                pairs = [PromptCompletionPair(q, q+r) for q, r in zip(batch["query"], dec_resp)]
+                    gens = self.generate( queries, max_new_tokens=max(self.len_sampler() for _ in queries), **self.gen_kwargs,)
 
-                            
-                rewards_dict = self.reward_fn(pairs)
-                rewards = rewards_dict["rewards"]
-                teacher_model_raw_ouput = rewards_dict["raw_outputs"]
-                reward_words = rewards_dict["total_length"]
+                    resp_only    = [g[len(q):] for g, q in zip(gens, queries)]
+                    dec_resp     = [self.tokenizer.decode(r) for r in resp_only]
+                    resp_words   = sum(len(r.split()) for r in dec_resp)
+                    if gen_used + resp_words > self.gen_word_budget:
+                        continue  
 
+                    pairs        = [ PromptCompletionPair(q, q + r) for q, r in zip(batch["query"], dec_resp)]
 
+                    rewards_dict = self.reward_fn(pairs)
+                    rewards      = rewards_dict["rewards"]
+                    raw_outputs  = rewards_dict["raw_outputs"]
+                    reward_words = rewards_dict["total_length"]
 
-                if prompt_used + query_words + reward_words > self.word_budget:
-                    break
-
-                stats = self.step(queries, resp_only, rewards)
-                self._log_batch(rewards, stats, prompt_used + query_words + reward_words, gen_used + resp_words)
-
-                
-                delta_prompt = query_words + reward_words
-                prompt_used += delta_prompt
-                gen_used += resp_words
-                total_prompt_words += delta_prompt
-                
-                self.generated_log.extend((r, rew) for r, rew in zip(dec_resp, teacher_model_raw_ouput))
-
-                if total_prompt_words >= next_ckpt:
-                    branch = f"ckpt_{fmt_tokens(next_ckpt)}"
-                    self._push_to_hub(branch, f"Checkpoint at {fmt_tokens(next_ckpt)} words")
-                    next_ckpt = schedule_next_ckpt(total_prompt_words)
-
-            logger.info("Epoch %d finished: prompt=%d, gen=%d", epoch + 1, prompt_used, gen_used)
-
-        self._push_final(); self._dump_logs()
+                    if prompt_used + query_words + reward_words > self.word_budget:
+                        continue  
 
 
-    def _log_batch(self, rewards, stats, prompt_words, gen_words):
-        rw = [float(r) for r in rewards]
-        self.batch_logs.append({
-            "avg_reward": statistics.mean(rw),
-            "std_reward": statistics.stdev(rw) if len(rw) > 1 else 0.0,
-            "kl": stats.get("kl", 0.0),
-            "entropy": stats.get("entropy", 0.0),
-            "policy_loss": stats.get("policy", 0.0),
-            "value_loss": stats.get("value", 0.0),
-            "prompt_words": prompt_words,
-            "gen_words": gen_words,
-        })
+                    stats = self.step(queries, resp_only, rewards)
+                    self._log_batch( rewards, stats, prompt_used + query_words + reward_words, gen_used   + resp_words, global_step,)
+                    global_step += 1
+
+                    # ------------------------------ bookkeeping ------------------------------
+                    delta_prompt = query_words + reward_words
+                    prompt_used += delta_prompt
+                    gen_used    += resp_words
+                    total_prompt_words += delta_prompt
+
+                    self.generated_log.extend(
+                        (r, rew) for r, rew in zip(dec_resp, raw_outputs)
+                    )
+
+                    if total_prompt_words >= next_ckpt:
+                        branch = f"ckpt_{fmt_tokens(next_ckpt)}"
+                        self._push_to_hub(branch, f"Checkpoint at {fmt_tokens(next_ckpt)} words")
+                        next_ckpt = schedule_next_ckpt(total_prompt_words)
+
+
+                except Exception as e:
+                    logger.exception(
+                        "Error in epoch %d batch %d (global_step=%d). Skipping batch. %s", epoch + 1, batch_idx, global_step, str(e),)
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    continue
+
+            logger.info("Epoch %d finished: prompt=%d, gen=%d",epoch + 1,prompt_used,gen_used,)
+
+        self._push_final()
+        self._dump_logs()
+
+
+
+    def _log_batch(self, rewards, stats, prompt_words, gen_words, global_step):
+        """Record batch metrics locally and in Weights & Biases (wandb)."""
+        record = {
+            "avg_reward": statistics.mean(rewards),
+            "std_reward": statistics.stdev(rewards) if len(rewards) > 1 else 0.0,
+            "kl":             stats.get("objective/kl", 0.0),
+            "entropy":        stats.get("objective/entropy", 0.0),
+            "policy_loss":    stats.get("ppo/loss/policy", 0.0),
+            "value_loss":     stats.get("ppo/loss/value", 0.0),
+            "total_loss":     stats.get("ppo/loss/total", 0.0),
+            "mean_value_pred":stats.get("ppo/val/vpred", 0.0),
+            "prompt_words":   prompt_words,
+            "gen_words":      gen_words,
+            "learning_rate":  stats.get("ppo/learning_rate", 0.0),
+        }
+
+
+        self.batch_logs.append({**record, "global_step": global_step})
+
+        if self.wandb_enabled:
+            wandb.log(record, step=global_step)

@@ -7,12 +7,13 @@ from src.interactivelearning.utils import load_yaml_config
 from src.interactivelearning.ppoconfig import CustomPPOConfig
 
 
+
 def main(ppo_cfg, teacher_cfg):
 
 
     ppo_config = CustomPPOConfig(
         model_name=ppo_cfg["model_name"],
-        revision_name=ppo_cfg["revision_name"],
+        revision_name=ppo_cfg.get("revision_name",None),
         learning_rate=float(ppo_cfg.get("learning_rate", 1e-5)),
         log_with=ppo_cfg.get("log_with", None),
         mini_batch_size=ppo_cfg.get("batch_size"),
@@ -63,7 +64,8 @@ def main(ppo_cfg, teacher_cfg):
         reward_fn=reward_model,
         word_budget=token_limit,
         hf_org=ppo_cfg.get("hf_org", "llm-slice"),
-        save_base_dir=ppo_cfg.get("save_base_dir", "saved_models")
+        save_base_dir=ppo_cfg.get("save_base_dir", "saved_models"),
+        wandb_project="ppo-rlhf",   
     )
 
     # Generation kwargs from config
