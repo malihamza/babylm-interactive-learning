@@ -81,6 +81,7 @@ class CustomPPOTrainer(PPOTrainer):
         self.gen_kwargs = {
             "min_new_tokens": 0,
             "max_new_tokens": 64,
+            "min_length": -1,
             "top_k": 0,
             "top_p": 1.0,
             "do_sample": True,
@@ -225,7 +226,7 @@ class CustomPPOTrainer(PPOTrainer):
                     self._log_batch( rewards, stats, prompt_used + query_words + reward_words, gen_used   + resp_words, global_step,)
                     global_step += 1
 
-                    # ------------------------------ bookkeeping ------------------------------
+
                     delta_prompt = query_words + reward_words
                     prompt_used += delta_prompt
                     gen_used    += resp_words
@@ -257,9 +258,10 @@ class CustomPPOTrainer(PPOTrainer):
 
     def _log_batch(self, rewards, stats, prompt_words, gen_words, global_step):
         """Record batch metrics locally and in Weights & Biases (wandb)."""
+        rw = [float(r) for r in rewards]
         record = {
-            "avg_reward": statistics.mean(rewards),
-            "std_reward": statistics.stdev(rewards) if len(rewards) > 1 else 0.0,
+            "avg_reward": statistics.mean(rw),
+            "std_reward": statistics.stdev(rw) if len(rw) > 1 else 0.0,
             "kl":             stats.get("objective/kl", 0.0),
             "entropy":        stats.get("objective/entropy", 0.0),
             "policy_loss":    stats.get("ppo/loss/policy", 0.0),
