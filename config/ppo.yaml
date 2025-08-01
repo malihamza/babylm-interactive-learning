@@ -7,9 +7,9 @@ hf_org" : llm-slice
 
 
 # Trainer Settings
-num_epochs: 1
-batch_size: 1
-token_limit: 2000
+num_epochs: 2
+batch_size: 32
+token_limit: 10000
 # checkpoint_interval: 100000
 save_base_dir: saved_models/
 
