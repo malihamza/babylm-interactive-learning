@@ -81,6 +81,7 @@ class CustomPPOTrainer(PPOTrainer):
         self.gen_kwargs = {
             "min_new_tokens": 0,
             "max_new_tokens": 64,
+            "min_length": -1,
             "top_k": 0,
             "top_p": 1.0,
             "do_sample": True,
