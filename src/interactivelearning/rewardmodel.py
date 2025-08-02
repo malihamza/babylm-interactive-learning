@@ -36,16 +36,6 @@ class Llama3RewardModel(RewardModel):
     def __call__(self, prompt_completion_pairs):
         rewards, raw_outputs, total_length = self.teacher_model.evaluate_batch(prompt_completion_pairs)
 
-        # Log rewards
-        formatted_rewards = [f"{r:.3f}" for r in rewards]
-        rewards_str = "\n  ".join(formatted_rewards)
-        raw_outputs_str = "\n  ".join(map(str, raw_outputs))
-        logger.info(
-            f"Raw outputs:\n  {raw_outputs_str}\n"
-            f"Rewards:\n  {rewards_str}\n"
-            f"Total length: {total_length}\n"
-        )
-
         reward_tensors = [torch.tensor(float(r), dtype=torch.float32) for r in rewards]
         return {
             "rewards": reward_tensors,
