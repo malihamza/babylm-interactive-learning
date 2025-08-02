@@ -78,7 +78,7 @@ class DatasetBuilder(ABC):
 
 
     def _tokenize_batch(self, batch: Dict[str, List[str]], text_key: str):
-        """Vectorised tokenisation for a batch of texts."""
+        """Vectorised tokenization for a batch of texts."""
         texts: List[str] = batch[text_key]
         ids_batch = self.tokenizer(texts, add_special_tokens=False)["input_ids"]
         out = {"input_ids": [], "query": []}
@@ -89,7 +89,7 @@ class DatasetBuilder(ABC):
         return out
 
     def _tokenize_row(self, sample: Dict[str, str], text_key: str):
-        """Row‑wise tokenisation (fallback when `batch == 0`)."""
+        """Row‑wise tokenization (fallback when `batch == 0`)."""
         ids = self.tokenizer.encode(sample[text_key])[: self.input_size_sampler()]
         return {"input_ids": ids, "query": self.tokenizer.decode(ids)}
 
