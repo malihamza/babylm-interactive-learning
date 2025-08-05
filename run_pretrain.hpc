@@ -13,7 +13,7 @@ set -euo pipefail
 # ========== ENVIRONMENT SETUP ==========
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     module purge
-    module load zstd/1.5.6 gcc/13.2.0 cuda/12.6.2 python/3.11.9
+    module load zstd/1.5.6 gcc/13.2.0 python/3.11.9 # cuda/12.6.2
     module load miniforge3
     # === Source conda ===
     CONDA_EXE_PATH=$(which conda)
