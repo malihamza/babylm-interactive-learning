@@ -83,12 +83,12 @@ class CustomPPOTrainer(PPOTrainer):
         self.repo_id = f"{hf_org}/{name_with_budget}" if hf_org else name_with_budget
 
         self.gen_kwargs = {
-            "min_new_tokens": 0,
             "max_new_tokens": 64,
             "min_length": -1,
             "top_k": 0,
             "top_p": 1.0,
             "do_sample": True,
+            "num_beams": 1,
             "pad_token_id": tokenizer.eos_token_id,
         }
 
