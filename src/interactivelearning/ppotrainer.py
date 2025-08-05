@@ -26,7 +26,11 @@ def fmt_tokens(n: int) -> str:
 
 def schedule_next_ckpt(words_so_far: int) -> int:
     """Compute the next checkpoint threshold based on words processed."""
-    if words_so_far < 10_000_000:
+    if words_so_far < 1_000_000:
+        step = 100_000
+    elif words_so_far < 2_000_000:
+        step = 200_000
+    elif words_so_far < 10_000_000:
         step = 1_000_000
     elif words_so_far < 100_000_000:
         step = 10_000_000
