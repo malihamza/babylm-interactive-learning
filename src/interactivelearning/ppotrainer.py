@@ -234,7 +234,7 @@ class CustomPPOTrainer(PPOTrainer):
                         logger.info("Budget hit → epoch done")
                         break
 
-                    queries      = batch["input_ids"] # student prompt
+                    queries = batch["input_ids"] # student prompt
                     if not self._prompt_charged:
                         query_words = sum(len(q.split()) for q in batch["query"])
                         self._prompt_charged = True # if using non-fixed prompt (WP or TinyStories), set to False here
@@ -254,7 +254,7 @@ class CustomPPOTrainer(PPOTrainer):
                     pairs        = [ PromptCompletionPair(q, q + r) for q, r in zip(batch["query"], dec_resp)]
 
                     rewards_dict = self.reward_fn(pairs)
-                    rewards      = rewards_dict["rewards"]
+                    teacher_rewards = rewards_dict["rewards"]
                     raw_outputs  = rewards_dict["raw_outputs"]
                     reward_words = rewards_dict["total_length"]
 
@@ -268,7 +268,7 @@ class CustomPPOTrainer(PPOTrainer):
 
 
                     stats = self.step(queries, resp_only, rewards)
-                    self._log_batch( rewards, stats, prompt_used + query_words + reward_words, gen_used   + resp_words, global_step,)
+                    self._log_batch( rewards, stats, teacher_rewards, length_bonuses, prompt_used + query_words + reward_words, gen_used + resp_words, global_step,)
                     global_step += 1
 
 
@@ -278,7 +278,7 @@ class CustomPPOTrainer(PPOTrainer):
                     total_prompt_words += delta_prompt
 
                     self.generated_log.extend(
-                        (r, rew) for r, rew in zip(dec_resp, raw_outputs)
+                        (q, r, rew) for q, r, rew in zip(batch["query"], dec_resp, raw_outputs)
                     )
 
                     if total_prompt_words >= next_ckpt:
@@ -301,21 +301,27 @@ class CustomPPOTrainer(PPOTrainer):
 
 
 
-    def _log_batch(self, rewards, stats, prompt_words, gen_words, global_step):
+    def _log_batch(self, rewards, stats, teacher_rewards, length_bonuses, prompt_words, gen_words, global_step):
         """Record batch metrics locally and in Weights & Biases (wandb)."""
+        teacher_rw = [float(r) for r in teacher_rewards]
         rw = [float(r) for r in rewards]
         record = {
-            "avg_reward": statistics.mean(rw),
-            "std_reward": statistics.stdev(rw) if len(rw) > 1 else 0.0,
-            "kl":             stats.get("objective/kl", 0.0),
+            "avg_teacher_reward": statistics.mean(teacher_rw),
+            "std_teacher_reward": statistics.stdev(teacher_rw) if len(teacher_rw) > 1 else 0.0,
+            "avg_length_bonus": statistics.mean(length_bonuses),
+            "std_length_bonus": statistics.stdev(length_bonuses) if len(length_bonuses) > 1 else 0.0,
+            "new_old_ratio": stats.get("ppo/policy/ratio", 0.0),
+            "mean_non_reward": stats.get("ppo/mean_non_score_reward", 0.0),
+            "mean_total_reward": statistics.mean(rw) + statistics.mean(length_bonuses) + stats.get("ppo/mean_non_score_reward", 0.0),
             "entropy":        stats.get("objective/entropy", 0.0),
-            "policy_loss":    stats.get("ppo/loss/policy", 0.0),
+            "policy_ratio":   stats.get("ppo/policy/ratio", 0.0),
             "value_loss":     stats.get("ppo/loss/value", 0.0),
-            "total_loss":     stats.get("ppo/loss/total", 0.0),
-            "mean_value_pred":stats.get("ppo/val/vpred", 0.0),
+            "student_len":    stats.get("tokens/responses_len_mean", 0.0),
             "prompt_words":   prompt_words,
             "gen_words":      gen_words,
-            "learning_rate":  stats.get("ppo/learning_rate", 0.0),
+            "learning_rate":  stats.get("ppo/learning_rate", 0.0),#
+            "kl_coef":        stats.get("objective/kl_coef", 0.0),
+            "kl":             stats.get("objective/kl", 0.0),
         }
 
 
