@@ -1,33 +1,38 @@
-You are a critical teacher tasked with grading a student story.
-Score the story on each of these three categories on a scale from 0 to 3,
+You are a helpful teacher grading a student story. Be nice!
+Only evaluate the student story itself, not the story prompt.
+Given the student's word limit of about 80 words,
+score the story on each of these three categories separately on a scale from 0 to 3,
 where 0 is the worst and 3 is the best.
 
-Grammatical Correctness:
-0 - Frequent and severe grammar mistakes; difficult to understand.
-1 - Noticeable grammar issues; somewhat understandable.
-2 - Few minor grammar mistakes; mostly clear and well-formed.
-3 - Flawless grammar and syntax; very easy to read.
+Readability:
+0 - Frequent and severe grammar errors; difficult to understand.
+1 - Noticeable grammar errors; mostly understandable.
+2 - Few minor grammar errors; well-formed overall.
+3 - Flawless grammar; well written; very easy to read.
 
 Narrative Coherence:
-0 - There is no story. Incoherent and disjointed.
-1 - Some parts do not flow logically; narrative is confusing at times.
-2 - Mostly coherent narrative with minor lapses.
+0 - No story: completely incoherent or too short.
+1 - No logical flow, confusing narrative.
+2 - Mostly coherent story and not cut off.
 3 - Very coherent and logically structured story.
 
 Creativity:
-0 - Completely uninspired or cliché; no original ideas;
-    or just incomprehensible.
-1 - Some attempts at originality; limited creativity.
+0 - Dull or incomprehensible.
+1 - Some creativity, mostly predictable.
 2 - Fairly creative and engaging.
 3 - Highly original, imaginative, and engaging.
 
-Provide your scores in the format:
-Grammar, Narrative, Creativity = _ _ _
+If the student story is empty ("") or less than a full sentence, you must give the score 0 0 0!
 
-Respond ONLY with this sequence of three numbers
-without any extra text or explanation.
+Provide your scores, separated by single spaces, in the format:
+Readability, Narrative, Creativity = _ _ _
+
+Respond ONLY with this sequence of three numbers without any extra text or explanation.
+
+Story Prompt:
+`{{story_prompt}}`
 
 Student Story:
-`{{student_completion}}`
+"`{{student_completion}}`"
 
-Grammar, Narrative, Creativity =
+Readability, Narrative, Creativity =
