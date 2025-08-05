@@ -6,10 +6,19 @@ from src.interactivelearning.datasetbuilder import IMDBDatasetBuilder, DatasetCo
 from src.interactivelearning.utils import load_yaml_config
 from src.interactivelearning.ppoconfig import CustomPPOConfig
 
+import random
+import numpy as np
+import torch
 
 
 def main(ppo_cfg, teacher_cfg):
 
+    seed = teacher_cfg["seed"]
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     ppo_config = CustomPPOConfig(
         model_name=ppo_cfg["model_name"],

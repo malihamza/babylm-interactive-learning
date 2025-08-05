@@ -15,9 +15,9 @@ class Teacher(ABC):
         """
         self.model_name = config["model_name_or_path"]
         self.prompt_template = self.load_prompt(config["prompt_template_path"])
-        self.sampling_params = SamplingParams(temperature=config["temperature"], max_tokens=config["max_tokens"])
-        # self.min_score = config.get("min_score", 1)
-        # self.max_score = config.get("max_score", 9)
+        self.sampling_params = SamplingParams(temperature=config["temperature"], max_tokens=config["max_tokens"], seed=config["seed"])
+        self.min_score = config.get("min_score", 0)
+        self.max_score = config.get("max_score", 3)
         self.default_score = config.get("default_score", 0.5)
         logger.info("Initializing teacher model: %s", self.model_name)
         self.load_model()
