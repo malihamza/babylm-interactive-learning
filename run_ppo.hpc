@@ -2,7 +2,8 @@
 #SBATCH -n 1
 #SBATCH -c 32
 #SBATCH --gres=gpu:A100:1
-#SBATCH --time=05:00:00
+#SBATCH --constraint=80gb
+#SBATCH --time=24:00:00
 #SBATCH --job-name="PPO_train"
 #SBATCH --output=logs/ppo/ppo_train_%j.log
 #SBATCH --partition=scc-gpu
@@ -13,7 +14,7 @@ set -euo pipefail
 # ========== ENVIRONMENT SETUP ==========
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     module purge
-    module load zstd/1.5.6 gcc/13.2.0 cuda/12.6.2 python/3.11.9
+    module load zstd/1.5.6 gcc/13.2.0 python/3.11.9 # cuda/12.6.2
     module load miniforge3
     # === Source conda ===
     # on SCC
