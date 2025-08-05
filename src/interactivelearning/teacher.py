@@ -72,6 +72,7 @@ class Teacher(ABC):
         """
         logger.debug("Preparing input for LLM using sample: %s", sample)
         user_prompt = self.prompt_template.render(
+            story_prompt=sample.prompt,
             student_completion=sample.completion,
         )
 
