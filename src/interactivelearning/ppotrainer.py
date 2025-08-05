@@ -180,12 +180,32 @@ class CustomPPOTrainer(PPOTrainer):
 
     def _dump_logs(self):
         if self.generated_log:
-            with open(os.path.join(self.meta_dir, "generated.csv"), "w", newline="") as f:
-                csv.writer(f).writerows(self.generated_log)
+            cleaned_log = []
+            for row in self.generated_log:
+                # must be a list/tuple of length 3
+                if not (isinstance(row, (list, tuple)) and len(row) == 3):
+                    logger.warning(f"Malformed row in generated_log: {row}")
+                    continue
+                cleaned_log.append([str(x).replace('\r', ' ').replace('\n', ' ') for x in row])
+
+            with open(os.path.join(self.meta_dir, "generated.csv"), "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+                writer.writerow(["query", "student_output", "teacher_output"])
+                writer.writerows(cleaned_log)
         if self.batch_logs:
             with open(os.path.join(self.meta_dir, "batch_stats.csv"), "w", newline="") as f:
                 w = csv.DictWriter(f, self.batch_logs[0].keys()); w.writeheader(); w.writerows(self.batch_logs)
         logger.info("Logs saved → %s", self.meta_dir)
+
+        # Save config files
+        ppo_config_path = "config/ppo.yaml"
+        teacher_config_path = "config/teacher.yaml"
+        try:
+            shutil.copy(ppo_config_path, os.path.join(self.meta_dir, "ppo.yaml"))
+            shutil.copy(teacher_config_path, os.path.join(self.meta_dir, "teacher.yaml"))
+            logger.info("Config files saved to meta_data.")
+        except Exception as e:
+            logger.warning("Could not save config files to meta_data: %s", e)
 
 
     def run_training_loop(self, num_epochs: int = 1):
