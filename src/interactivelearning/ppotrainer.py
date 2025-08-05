@@ -87,7 +87,10 @@ class CustomPPOTrainer(PPOTrainer):
 
         self.api = HfApi()
         base_name = (hf_base_repo or config.model_name).replace("/", "-")
-        name_with_budget = f"{base_name}_ppo_{fmt_tokens(word_budget)}"
+        base_name = f"{base_name}_{config.revision_name}"
+        name_with_budget = f"{base_name}_ppo-{fmt_tokens(word_budget)}"
+        if teacher_seed is not None:
+            name_with_budget = f"{name_with_budget}-seed{teacher_seed}"
         self.repo_id = f"{hf_org}/{name_with_budget}" if hf_org else name_with_budget
 
         self.gen_kwargs = {
