@@ -238,7 +238,39 @@ class WritingPromptsDatasetBuilder(DatasetBuilder):
         ds.set_format(type="torch")
         logger.info("WritingPrompts ready: %d rows", len(ds))
         return ds
-    
+
+
+class DeterministicPromptDatasetBuilder(DatasetBuilder):
+    """
+    DatasetBuilder that generates a specified fixed prompt as `query` (tokenized appropriately)
+    as many times as needed to fill a given token budget.
+    """
+
+    def __init__(self, config, prompt="Let me tell you a story. Once upon a time,", **kwargs):
+        super().__init__(config, "deterministic_prompt", **kwargs)
+        self.prompt = prompt
+
+    def _raw_split(self):
+        return None, None  # Not used
+
+    def load(self):
+        logger.info("Building DeterministicPrompt dataset with: %s", repr(self.prompt))
+        # Tokenize the specified prompt
+        ids = self.tokenizer(self.prompt, add_special_tokens=False)["input_ids"]
+        query = self.tokenizer.decode(ids)
+        sample = {"input_ids": ids, "query": query}
+
+        # Determine how many times to repeat the prompt to fill the token_limit
+        if self.token_limit is not None:
+            # n = max(1, self.token_limit // max(len(ids), 1))
+            n = max(1, self.token_limit // 3) # query_words only count once, so the max. limit is ~3 teacher words per round
+        else:
+            n = 1000  # Default, arbitrary
+
+        dataset = [sample.copy() for _ in range(n)]
+        logger.info("DeterministicPrompt: Created %d samples", n)
+        return Dataset.from_list(dataset)
+
 
 class DatasetCombiner:
     """Greedily fills the total word budget with datasets in given order.

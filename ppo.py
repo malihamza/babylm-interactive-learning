@@ -36,10 +36,16 @@ def main(ppo_cfg, teacher_cfg):
     #                                     max_len=query_max_length)
 
 
-    builder1 = TinyStoriesDatasetBuilder(ppo_config, 
-                                            cache_dir=data_path,
-                                        min_len=query_min_length, 
-                                        max_len=query_max_length)
+    #builder1 = TinyStoriesDatasetBuilder(ppo_config,
+    #                                        cache_dir=data_path,
+    #                                    min_len=query_min_length,
+    #                                    max_len=query_max_length)
+
+    builder1 = DeterministicPromptDatasetBuilder(
+        ppo_config,
+        prompt="Let me tell you a long, magical tale. Once upon a time, in a faraway land,",
+        cache_dir=data_path
+    )
 
     # Combine datasets
     combined_dataset = DatasetCombiner([builder1])
