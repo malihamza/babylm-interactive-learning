@@ -76,6 +76,7 @@ class CustomPPOTrainer(PPOTrainer):
         self.reward_fn = reward_fn
         self.word_budget = word_budget
         self.gen_word_budget = gen_word_budget
+        self._prompt_charged = False  # Track if we have already counted the prompt words
 
         teacher_config_path = "config/teacher.yaml"
         try:
@@ -213,8 +214,12 @@ class CustomPPOTrainer(PPOTrainer):
                         logger.info("Budget hit → epoch done")
                         break
 
-                    queries      = batch["input_ids"]
-                    query_words  = sum(len(q.split()) for q in batch["query"])
+                    queries      = batch["input_ids"] # student prompt
+                    if not self._prompt_charged:
+                        query_words = sum(len(q.split()) for q in batch["query"])
+                        self._prompt_charged = True # if using non-fixed prompt (WP or TinyStories), set to False here
+                    else:
+                        query_words = 0
                     if prompt_used + query_words > self.word_budget:
                         continue
 
