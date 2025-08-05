@@ -258,6 +258,11 @@ class CustomPPOTrainer(PPOTrainer):
                     raw_outputs  = rewards_dict["raw_outputs"]
                     reward_words = rewards_dict["total_length"]
 
+                    max_new_tokens = self.gen_kwargs["max_new_tokens"]
+                    length_coeff = 0.4
+                    length_bonuses = [length_coeff * len(r.split()) / max_new_tokens for r in dec_resp]
+                    rewards = [(reward + bonus) / (1 + length_coeff) for reward, bonus in zip(rewards_dict["rewards"], length_bonuses)]
+
                     if prompt_used + query_words + reward_words > self.word_budget:
                         continue
 
