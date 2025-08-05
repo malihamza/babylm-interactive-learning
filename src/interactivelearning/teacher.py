@@ -39,9 +39,12 @@ class Teacher(ABC):
             logger.warning("No valid scores found in output: '%s', returning 0.5", text)
             return self.default_score  
         # Clamp to [0,3] and convert to int
-        scores = [max(0, min(int(n), 3)) for n in numbers]
-        total = sum(scores)
-        normalized = total / 9
+        #logger.info(f"Raw teacher output: {text}")
+        scores = [max(0, min(int(n), self.max_score)) for n in numbers]
+        weights = [1, 1, 1] # weight for each of the three categories
+        total = sum(w * s for w, s in zip(weights, scores))
+        total_max_score = sum(weights) * self.max_score # self.max_score is per category
+        normalized = total / total_max_score
         return normalized
 
     @staticmethod
