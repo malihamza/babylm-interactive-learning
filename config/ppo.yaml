@@ -1,16 +1,16 @@
 model_name: llm-slice/babylm-gpt2-small-90M-seed41
 revision_name: chck_900M
-learning_rate: 1e-5
+learning_rate: 1e-6
 log_with: wandb
 hf_org" : llm-slice
 
 
 
 # Trainer Settings
-num_epochs: 2
-batch_size: 32
-token_limit: 10000
-# checkpoint_interval: 100000
+num_epochs: 1
+batch_size: 170
+token_limit: 1600000
+# checkpoint_interval: 200000
 save_base_dir: saved_models/
 
 
