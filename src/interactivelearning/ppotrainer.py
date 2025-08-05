@@ -3,6 +3,7 @@ import csv
 import statistics
 from datetime import datetime
 from typing import List
+import yaml
 
 import torch
 from tqdm import tqdm
@@ -76,6 +77,13 @@ class CustomPPOTrainer(PPOTrainer):
         self.word_budget = word_budget
         self.gen_word_budget = gen_word_budget
 
+        teacher_config_path = "config/teacher.yaml"
+        try:
+            with open(teacher_config_path, "r") as f:
+                teacher_cfg = yaml.safe_load(f)
+            teacher_seed = teacher_cfg.get("seed", None)
+        except Exception as e:
+            teacher_seed = None
 
         self.api = HfApi()
         base_name = (hf_base_repo or config.model_name).replace("/", "-")
