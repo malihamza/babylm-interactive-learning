@@ -2,7 +2,7 @@ import yaml
 from src.interactivelearning.rewardmodel import RandomRewardModel, Llama3RewardModel
 from src.interactivelearning.ppotrainer import CustomPPOTrainer
 from trl import PPOConfig, AutoModelForCausalLMWithValueHead
-from src.interactivelearning.datasetbuilder import IMDBDatasetBuilder, DatasetCombiner, TinyStoriesDatasetBuilder, WritingPromptsDatasetBuilder
+from src.interactivelearning.datasetbuilder import IMDBDatasetBuilder, DatasetCombiner, TinyStoriesDatasetBuilder, WritingPromptsDatasetBuilder, DeterministicPromptDatasetBuilder
 from src.interactivelearning.utils import load_yaml_config
 from src.interactivelearning.ppoconfig import CustomPPOConfig
 
