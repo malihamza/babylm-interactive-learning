@@ -8,7 +8,7 @@ It supports structured dataset preparation, teacher-based reward modeling, and f
 
 ---
 
-## 1. 🔧 Setup & Installation
+## 1. Setup & Installation
 
 ### Create Python Environment
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ---
 
-## 2. 📚 Pretraining
+## 2. Pretraining
 
 Before applying reinforcement learning, you can optionally **pretrain a language model** on a domain-specific dataset using standard language modeling objectives.
 
@@ -55,7 +55,7 @@ python3 src/pre_training/training.py \
 
 This pretraining step ensures that the model is well-initialized before applying PPO-based fine-tuning.
 
-## 3. 🧠 Teacher Model Configuration
+## 3. Teacher Model Configuration
 
 Teacher model evaluates prompt-response pairs and assigns scores used as reward signals during PPO training. Configuration is stored in:
 
@@ -81,7 +81,7 @@ Ensure your `prompt_template_path` is a valid Jinja2-style file using:
 
 ---
 
-## 4. 📚 Dataset Configuration
+## 4. Dataset Configuration
 
 The dataset builder (`TinyStoriesDatasetBuilder`, `IMDBDatasetBuilder`, etc.) handles dataset loading, filtering, and formatting. Token limit ensures sampling only up to a defined number of tokens for PPO training.
 
@@ -99,7 +99,7 @@ combined_dataset = combined_dataset.load()
 
 ---
 
-## 5. ⚙️ PPO Training Configuration
+## 5. PPO Training Configuration
 
 All PPO training settings are defined in:
 
@@ -136,7 +136,7 @@ These fields are passed to `CustomPPOConfig`, which extends `trl.PPOConfig` and 
 
 ---
 
-## 6. 🚀 Run PPO Fine-Tuning
+## 6. Run PPO Fine-Tuning
 
 ```bash
 python ppo.py
@@ -150,11 +150,11 @@ This will:
 
 ---
 
-## 7. 📁 Output Folder Structure
+## 7. Output Folder Structure
 
 During PPO training, the code automatically creates a dedicated output directory to store model checkpoints and training metadata. This is handled by the `make_model_output_dir()` function.
 
-### 📂 Folder Naming Convention
+### Folder Naming Convention
 
 The folder name follows this format:
 
@@ -169,7 +169,7 @@ meta-llama_Llama-3-8b-instruct_300K_tokens__2025-07-20__23-15-10/
 
 This ensures each training run has a unique and timestamped folder.
 
-### 📁 Folder Structure
+### Folder Structure
 
 Inside this folder:
 
@@ -186,7 +186,7 @@ meta-llama_Llama-3-8b-instruct_300K_tokens__2025-07-20__23-15-10/
     └── training_stats.csv       # Batch-wise reward and loss tracking
 ```
 
-### 📦 Purpose of Each Subfolder:
+### Purpose of Each Subfolder:
 
 - `checkpoints/`: Contains intermediate saved models at defined token intervals (e.g., every 100K tokens).
 - `meta_data/`: Logs responses, rewards, and loss metrics for later analysis or reproducibility.
@@ -197,7 +197,7 @@ Happy fine-tuning!
 
 
 
-## 8. ✅ Evaluation
+## 8. Evaluation
 
 After pretraining or fine-tuning your model, you can evaluate it using the [evaluation-pipeline-2025](https://github.com/babylm/evaluation-pipeline-2025) scripts.
 
@@ -213,3 +213,4 @@ cd evaluation-pipeline-2025
 - `eval_zero_shot.sh`: Evaluates your model in a **zero-shot setting** (no examples are shown during evaluation)
 
 Make sure your Hugging Face model (`llm-slice/babylm-gpt2-small`) is accessible or correctly logged in before running the scripts.
+
