@@ -8,7 +8,7 @@ hf_org" : llm-slice
 
 # Trainer Settings
 num_epochs: 1
-batch_size: 170
+batch_size: 220
 token_limit: 1600000
 # checkpoint_interval: 200000
 save_base_dir: saved_models/
@@ -24,7 +24,7 @@ data_path: data/ppo/
 # Output generation
 generation_kwargs:
   min_length: -1
-  max_new_tokens: 100
+  max_new_tokens: 90
   top_k: 0
   top_p: 1
   do_sample: true
