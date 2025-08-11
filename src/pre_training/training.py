@@ -7,7 +7,7 @@ pushed to the Hugging Face Hub on separate branches (e.g. chck_7M).
 Usage
 -----
 python train_babylm_gpt2.py \
-  --hub_repo YOUR_USERNAME/babylm-gpt2-small \
+  --hub_repo USERNAME/babylm-gpt2-small \
   --dataset_fraction 0.2 \
   --epochs 3 \
   --batch_size 8 \
@@ -23,9 +23,12 @@ from transformers import (
     GPT2Config, GPT2TokenizerFast, GPT2LMHeadModel,
     Trainer, TrainingArguments, TrainerCallback, set_seed
 )
+from tokenizers import ByteLevelBPETokenizer
 from huggingface_hub import HfApi
 
 import time
+
+local_rank = int(os.environ.get("RANK", "0"))
 
 def retry_hf(fn, max_retries=5, initial_wait=5, *args, **kwargs):
     """Retry Hugging Face Hub operations on network/server errors."""
@@ -99,11 +102,60 @@ if args.dataset_fraction < 1.0:
 # 4  Tokenizer
 # ---------------------------------------------------------------------------
 
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+if local_rank == 0:
+    # Select 90% of corpus for tokenizer training
+    train_tok_fraction = 0.9
+    num_for_tokenizer = int(len(dataset) * train_tok_fraction)
+    tokenizer_training_texts = dataset.select(range(num_for_tokenizer))["text"]
+
+    # Save these texts to a file for training
+    with open("babylm_for_tokenizer.txt", "w", encoding="utf8") as f:
+        for line in tokenizer_training_texts:
+            f.write(line + "\n")
+
+    # Train the tokenizer
+    custom_tokenizer = ByteLevelBPETokenizer()
+    custom_tokenizer.train(
+        files=["babylm_for_tokenizer.txt"],
+        vocab_size=16000,
+        min_frequency=2,
+        special_tokens=["<s>", "<pad>", "</s>", "<unk>", "<mask>"]
+    )
+
+    # Save tokenizer files for transformers to load (in a folder)
+    save_folder = "custom_tokenizer_bpe"
+    # Remove old tokenizer files/folder
+    if os.path.exists(save_folder):
+        try:
+            shutil.rmtree(save_folder)
+            print(f"[INFO] Removed previous tokenizer folder: {save_folder}")
+        except Exception as e:
+            print(f"[WARN] Could not remove {save_folder}: {e}")
+
+    os.makedirs(save_folder, exist_ok=True)
+    custom_tokenizer.save_model(save_folder)
+
+# After rank 0 finishes
+if local_rank != 0:
+    # Wait until the tokenizer files exist
+    while not os.path.exists("custom_tokenizer_bpe/vocab.json"):
+        time.sleep(1)
+
+# Load with GPT2TokenizerFast for HF compatibility
+tokenizer = GPT2TokenizerFast(
+    vocab_file="custom_tokenizer_bpe/vocab.json",
+    merges_file="custom_tokenizer_bpe/merges.txt",
+    pad_token="<pad>",
+    eos_token="</s>",
+    bos_token="<s>",
+    unk_token="<unk>"
+)
 tokenizer.model_max_length = args.seq_length
 tokenizer.padding_side = "left"
-tokenizer.pad_token = tokenizer.eos_token
 eos_id = tokenizer.eos_token_id
+
+
+print("Custom tokenizer trained; vocab size:", tokenizer.vocab_size)
 
 # Estimate token/word ratio for checkpoint schedule
 sample = dataset.shuffle(args.seed).select(range(min(10_000, len(dataset))))["text"]
@@ -173,7 +225,7 @@ train_args = TrainingArguments(
     fp16=args.fp16,
     logging_strategy="steps",
     logging_steps=100,
-    evaluation_strategy="steps",
+    eval_strategy="steps",
     eval_steps=500,
     save_strategy="no",
     report_to=["wandb"],
