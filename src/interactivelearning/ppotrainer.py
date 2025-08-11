@@ -4,6 +4,7 @@ import statistics
 from datetime import datetime
 from typing import List
 import yaml
+import time
 
 import torch
 from tqdm import tqdm
@@ -229,7 +230,7 @@ class CustomPPOTrainer(PPOTrainer):
                 tqdm(self.dataloader, desc=f"epoch {epoch+1}/{num_epochs}")
             ):
                 try:
-
+                    start = time.time()
                     if prompt_used >= self.word_budget or gen_used >= self.gen_word_budget:
                         logger.info("Budget hit → epoch done")
                         break
@@ -244,7 +245,7 @@ class CustomPPOTrainer(PPOTrainer):
                         continue
 
                     gens = self.generate(queries, **self.gen_kwargs,)
-
+                    gens_ready = time.time()
                     resp_only    = [g[len(q):] for g, q in zip(gens, queries)]
                     dec_resp     = [self.tokenizer.decode(r) for r in resp_only]
                     resp_words   = sum(len(r.split()) for r in dec_resp)
@@ -285,7 +286,17 @@ class CustomPPOTrainer(PPOTrainer):
                         branch = f"ckpt_{fmt_tokens(next_ckpt)}"
                         self._push_to_hub(branch, f"Checkpoint at {fmt_tokens(next_ckpt)} words")
                         next_ckpt = schedule_next_ckpt(total_prompt_words)
+                    logging_ready = time.time()
 
+                    logger.info(
+                        f"TIMER EPOCH {epoch + 1} BATCH {batch_idx} "
+                        f"batch_load={queries_ready - start:.3f}s "
+                        f"generate={gens_ready - queries_ready:.3f}s "
+                        f"word_count={word_counting_ready - gens_ready:.3f}s "
+                        f"ppo_step={step_ready - word_counting_ready:.3f}s "
+                        f"log={logging_ready - step_ready:.3f}s "
+                        f"total={logging_ready - start:.3f}s"
+                    )
 
                 except Exception as e:
                     logger.exception(
