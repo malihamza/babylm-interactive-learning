@@ -19,8 +19,8 @@ from huggingface_hub import HfApi
 import wandb
 
 def fmt_tokens(n: int) -> str:
-    if n >= 1_000_000:
-        return f"{n // 1_000_000}M"
+    #if n >= 1_000_000:
+    #    return f"{n // 1_000_000}M"
     if n >= 1_000:
         return f"{n // 1_000}K"
     return str(n)
@@ -88,7 +88,9 @@ class CustomPPOTrainer(PPOTrainer):
             teacher_seed = None
 
         self.api = HfApi()
-        base_name = (hf_base_repo or config.model_name).replace("/", "-")
+
+        #base_name = (hf_base_repo or config.model_name).replace("/", "-")
+        base_name = config.model_name.split("/")[-1] # remove HF organization bit
         base_name = f"{base_name}_{config.revision_name}"
         name_with_budget = f"{base_name}_ppo-{fmt_tokens(word_budget)}"
         if teacher_seed is not None:
@@ -172,7 +174,7 @@ class CustomPPOTrainer(PPOTrainer):
 
     def _push_checkpoint(self, words_used: int):
         tag = fmt_tokens(words_used)
-        branch = f"ckpt_{tag}_words"
+        branch = f"chck_{tag}_words"
         self._push_to_hub(branch, f"Checkpoint at {tag} words")
 
     def _push_final(self):
@@ -242,15 +244,16 @@ class CustomPPOTrainer(PPOTrainer):
                     else:
                         query_words = 0
                     if prompt_used + query_words > self.word_budget:
-                        continue
-
+                        break
+                    queries_ready = time.time()
                     gens = self.generate(queries, **self.gen_kwargs,)
                     gens_ready = time.time()
                     resp_only    = [g[len(q):] for g, q in zip(gens, queries)]
                     dec_resp     = [self.tokenizer.decode(r) for r in resp_only]
                     resp_words   = sum(len(r.split()) for r in dec_resp)
                     if gen_used + resp_words > self.gen_word_budget:
-                        continue
+                        logger.info("Generation budget hit → epoch done")
+                        break
 
                     pairs        = [ PromptCompletionPair(q, q + r) for q, r in zip(batch["query"], dec_resp)]
 
@@ -265,10 +268,12 @@ class CustomPPOTrainer(PPOTrainer):
                     rewards = [(reward + bonus) / (1 + length_coeff) for reward, bonus in zip(rewards_dict["rewards"], length_bonuses)]
 
                     if prompt_used + query_words + reward_words > self.word_budget:
-                        continue
+                        logger.info("Budget hit → epoch done")
+                        break
 
-
+                    word_counting_ready = time.time()
                     stats = self.step(queries, resp_only, rewards)
+                    step_ready = time.time()
                     self._log_batch( rewards, stats, teacher_rewards, length_bonuses, prompt_used + query_words + reward_words, gen_used + resp_words, global_step,)
                     global_step += 1
 
@@ -283,8 +288,9 @@ class CustomPPOTrainer(PPOTrainer):
                     )
 
                     if total_prompt_words >= next_ckpt:
-                        branch = f"ckpt_{fmt_tokens(next_ckpt)}"
+                        branch = f"chck_{fmt_tokens(next_ckpt)}"
                         self._push_to_hub(branch, f"Checkpoint at {fmt_tokens(next_ckpt)} words")
+                        self._dump_logs()
                         next_ckpt = schedule_next_ckpt(total_prompt_words)
                     logging_ready = time.time()
 
