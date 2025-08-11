@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH -n 1
-#SBATCH -c 32
+#SBATCH -c 8
 #SBATCH --gres=gpu:A100:1
-#SBATCH --time=05:00:00
+#SBATCH --time=04:00:00
 #SBATCH --job-name="BLM_finetune"
 #SBATCH --output=logs/finetune/finetune__%j.log
-#SBATCH --partition=react
+#SBATCH --partition=scc-gpu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 set -euo pipefail
@@ -39,8 +39,8 @@ else
 fi
 
 # ========== Load HF and wandb credentials ==========
-if [ -f ".env" ]; then
-    source ".env"
+if [ -f "../.env" ]; then
+    source "../.env"
 fi
 echo "Environment Check"
 if [[ -z "${HF_TOKEN:-}" ]]; then
