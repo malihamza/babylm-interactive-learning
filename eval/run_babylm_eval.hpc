@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH -n 1
-#SBATCH -c 16
+#SBATCH -c 8
 #SBATCH --gres=gpu:A100:1
 #SBATCH --time=00:30:00
-#SBATCH --job-name="BLM_eval_1000M"
+#SBATCH --job-name="BLM_eval_main"
 #SBATCH --output=logs/eval/babylm_eval_%j.log
-#SBATCH --partition=react
+#SBATCH --partition=scc-gpu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 set -euo pipefail
