@@ -10,6 +10,21 @@ import random
 import numpy as np
 import torch
 
+import os
+# Use environment TMPDIR for all caches and outputs
+scratch = os.environ.get('TMPDIR', '/tmp')
+hf_cache = os.path.join(scratch, 'hf_cache')
+pip_cache = os.path.join(scratch, 'pip_cache')
+
+# Set HuggingFace, pip, and output directories to local temp
+os.environ['HF_HOME'] = hf_cache
+os.environ['TRANSFORMERS_CACHE'] = hf_cache
+os.environ['HUGGINGFACE_HUB_CACHE'] = hf_cache
+os.environ['PIP_CACHE_DIR'] = pip_cache
+
+os.makedirs(hf_cache, exist_ok=True)
+os.makedirs(pip_cache, exist_ok=True)
+print(f"[INFO] Using HF and pip cache at {hf_cache} and {pip_cache}")
 
 def main(ppo_cfg, teacher_cfg):
 
@@ -79,7 +94,7 @@ def main(ppo_cfg, teacher_cfg):
         reward_fn=reward_model,
         word_budget=token_limit,
         hf_org=ppo_cfg.get("hf_org", "llm-slice"),
-        save_base_dir=ppo_cfg.get("save_base_dir", "saved_models"),
+        save_base_dir=os.path.join(scratch, ppo_cfg.get("save_base_dir", "saved_models")),
         wandb_project="ppo-rlhf",   
     )
 
