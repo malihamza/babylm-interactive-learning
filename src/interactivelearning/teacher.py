@@ -131,7 +131,7 @@ class Llama3Teacher(Teacher):
                 model=self.model_name,
                 dtype="bfloat16",
                 enable_lora=False,
-                gpu_memory_utilization=0.3,                
+                gpu_memory_utilization=0.25,
                 max_seq_len_to_capture = 1024,
                 max_model_len = 1024,
                 
