@@ -8,17 +8,17 @@ Readability:
 0 - Frequent and severe grammar errors; difficult to understand.
 1 - Noticeable grammar errors; mostly understandable.
 2 - Few minor grammar errors; well-formed overall.
-3 - Flawless grammar; well written; very easy to read.
+3 - Correct grammar; well written.
 
 Narrative Coherence:
 0 - No story: completely incoherent or too short.
 1 - No logical flow, confusing narrative.
 2 - Mostly coherent story and not cut off.
-3 - Very coherent and logically structured story.
+3 - Coherent and logically structured story.
 
 Creativity:
 0 - Dull or incomprehensible.
-1 - Some creativity, mostly predictable.
+1 - Somewhat creative; mostly predictable.
 2 - Fairly creative and engaging.
 3 - Highly original, imaginative, and engaging.
 
