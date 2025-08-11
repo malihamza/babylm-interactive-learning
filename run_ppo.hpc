@@ -11,6 +11,16 @@
 
 set -euo pipefail
 
+#--- Storage setup for SLURM script ---
+# Ensure the job uses node-local SSD temp if available
+
+if [ -n "$LOCAL_TMPDIR" ]; then
+    export TMPDIR="$LOCAL_TMPDIR"
+    echo "Using node-local SSD: $TMPDIR"
+else
+    echo "Using default TMPDIR: $TMPDIR"
+fi
+
 # ========== ENVIRONMENT SETUP ==========
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     module purge
@@ -42,6 +52,41 @@ if [[ -z "${WANDB_API_KEY:-}" ]]; then
     warning "WANDB_API_KEY is not set! WandB logging may fail."
 fi
 
+# ========== RESOURCE LOGGING ==========
+
+# Start GPU utilization logging
+(
+  echo "==== GPU Monitoring for job $SLURM_JOB_ID ===="
+  while true; do
+    date
+    nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,temperature.gpu --format=csv
+    sleep 15
+  done
+) > "logs/ppo/gpu_usage_${SLURM_JOB_ID}.log" &
+export GPU_LOG_PID=$!
+
+# Start CPU + MEM logging
+(
+  echo "==== CPU+MEM Monitoring for job $SLURM_JOB_ID ===="
+  while true; do
+    date
+    top -b -n 1 | head -20
+    free -m
+    sleep 15
+  done
+) > "logs/ppo/sys_usage_${SLURM_JOB_ID}.log" &
+export SYS_LOG_PID=$!
+
 # ========== RUN SCRIPT ==========
 python -u ppo.py
 echo "[INFO] PPO training complete."
+
+cp -r $TMPDIR/saved_models ~/myprojects/BLM2025/saved_models/job_$SLURM_JOB_ID/
+
+# ========== Cleanup logging jobs (safe even if already exited) ==========
+if [[ -n "${GPU_LOG_PID:-}" ]]; then
+    kill "$GPU_LOG_PID" 2>/dev/null || true
+fi
+if [[ -n "${SYS_LOG_PID:-}" ]]; then
+    kill "$SYS_LOG_PID" 2>/dev/null || true
+fi
