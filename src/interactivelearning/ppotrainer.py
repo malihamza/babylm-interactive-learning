@@ -329,7 +329,6 @@ class CustomPPOTrainer(PPOTrainer):
             "std_teacher_reward": statistics.stdev(teacher_rw) if len(teacher_rw) > 1 else 0.0,
             "avg_length_bonus": statistics.mean(length_bonuses),
             "std_length_bonus": statistics.stdev(length_bonuses) if len(length_bonuses) > 1 else 0.0,
-            "new_old_ratio": stats.get("ppo/policy/ratio", 0.0),
             "mean_non_reward": stats.get("ppo/mean_non_score_reward", 0.0),
             "mean_total_reward": statistics.mean(rw) + statistics.mean(length_bonuses) + stats.get("ppo/mean_non_score_reward", 0.0),
             "entropy":        stats.get("objective/entropy", 0.0),
