@@ -1,10 +1,12 @@
 # File: compute_results.py
 # ------------------------
+from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+from scipy.stats import spearmanr
 import math
 from collections import Counter, defaultdict
 from tqdm import tqdm
@@ -66,15 +68,46 @@ def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, label
 
             if args.save_predictions:
                 num_id_matches = len(predictions[temp][uid])
-                predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
+                if args.task == "comps":
+                    predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["sentences"][chosen_sentence]})
+                else:
+                    predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
+
+
+def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions):
+    """Creates the model-human correlations of the morphological wug tasks. """
+    for temp, temp_dict in subset_to_stats.items():
+        stacked_probs = torch.stack(all_log_probs[temp], dim=1)
+        chosen_sentences = torch.max(stacked_probs, dim=1)[1].tolist()
+
+        stacked_probs = torch.nn.functional.softmax(stacked_probs, dim=1)
+
+        for key in ["model_ratios", "human_ratios"]:
+            if key not in temp_dict:
+                temp_dict[key] = []
+        for raw_sentence_dict, chosen_sentence, label, metadata, uid, prob in zip(raw_sentences, chosen_sentences, labels, metadatas, uids, stacked_probs[:, 0]):
+            temp_dict["model_ratios"].append(prob)
+            temp_dict["human_ratios"].append(metadata['ratio'])
+
+            if args.save_predictions:
+                num_id_matches = len(predictions[temp][uid])
+                prediction = {"id": f"{uid}_{num_id_matches}", "pred": raw_sentence_dict["completions"][chosen_sentence]}
+                prediction["prob"] = prob.item()
+
+                predictions[temp][uid].append(prediction)
+
+        temp_dict["correlation"] = spearmanr(temp_dict["model_ratios"], temp_dict["human_ratios"])[0]
 
 
 def compute_causal_results(args, model, dataloader, temperatures):
     subset_to_stats = {temp : {} for temp in temperatures}
     predictions = {temp : defaultdict(list) for temp in subset_to_stats}
     final_predictions = {temp : {} for temp in subset_to_stats}
+    no_image = False
+    if args.images_path is None:
+        no_image = True
 
-    for raw_sentences, sentence_dict, labels, metadatas, uids in tqdm(dataloader):
+    for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
         update_subset_to_stats(subset_to_stats, metadatas)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
@@ -82,14 +115,24 @@ def compute_causal_results(args, model, dataloader, temperatures):
         # Inference
         all_log_probs = {temp : [] for temp in subset_to_stats}
         for prefix in prefixes:
-            logits = model(
-                input_ids=sentence_dict[f"{prefix}_inputs"].to(DEVICE),
-                attention_mask=sentence_dict[f"{prefix}_attn_mask"].to(DEVICE),
-            )
+            if no_image:
+                logits = model(
+                    input_ids=sentence_dict[f"{prefix}_inputs"].to(DEVICE),
+                    attention_mask=sentence_dict[f"{prefix}_attn_mask"].to(DEVICE),
+                )
+            else:
+                logits = model(
+                    input_ids=sentence_dict[f"{prefix}_inputs"].to(DEVICE),
+                    attention_mask=sentence_dict[f"{prefix}_attn_mask"].to(DEVICE),
+                    pixel_values=images.to(DEVICE),
+                )
             if isinstance(logits, tuple):
                 logits = logits[0]  # BxTxV
             else:
                 logits = logits["logits"]  # BxTxV
+
+            if logits.size(1) != sentence_dict[f"{prefix}_inputs"].size(1):  # Assumption is that images are prepended to the text when done post-tokenization.
+                logits = logits[:, -sentence_dict[f"{prefix}_inputs"].size(1):]
 
             for temp in subset_to_stats:
                 log_probs = F.log_softmax(logits / temp, dim=-1)
@@ -97,7 +140,10 @@ def compute_causal_results(args, model, dataloader, temperatures):
                 phrase_log_probs = torch.sum(target_log_probs * sentence_dict[f"{prefix}_phrase_mask"].to(DEVICE), dim=1)
                 all_log_probs[temp].append(phrase_log_probs.cpu())
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
@@ -114,8 +160,11 @@ def compute_mlm_results(args, model, dataloader, temperatures):
     subset_to_stats = {temp : {} for temp in temperatures}
     predictions = {temp : defaultdict(list) for temp in subset_to_stats}
     final_predictions = {temp : {} for temp in subset_to_stats}
+    no_image = False
+    if args.images_path is None:
+        no_image = True
 
-    for raw_sentences, sentence_dict, labels, metadatas, uids in tqdm(dataloader):
+    for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
         update_subset_to_stats(subset_to_stats, metadatas)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
@@ -137,14 +186,24 @@ def compute_mlm_results(args, model, dataloader, temperatures):
                 targets = sentence_dict[f"{prefix}_targets"][batch_idx*bsz:(batch_idx+1)*bsz].to(DEVICE)
 
                 # Do the log-probs
-                logits = model(
-                    input_ids=tokens,
-                    attention_mask=attn_mask
-                )
+                if no_image:
+                    logits = model(
+                        input_ids=tokens,
+                        attention_mask=attn_mask,
+                    )
+                else:
+                    logits = model(
+                        input_ids=tokens,
+                        attention_mask=attn_mask,
+                        pixel_values=images.to(DEVICE),
+                    )
                 if isinstance(logits, tuple):
                     logits = logits[0]  # BxTxV
                 else:
                     logits = logits["logits"]  # BxTxV
+
+                if logits.size(1) != sentence_dict[f"{prefix}_tokens"].size(1):  # Assumption is that images are prepended to the text when done post-tokenization.
+                    logits = logits[:, -sentence_dict[f"{prefix}_tokens"].size(1):]
 
                 minibatch_indices = torch.arange(logits.shape[0]).to(DEVICE)
                 masked_logits = logits[minibatch_indices, indices]  # BxV
@@ -167,7 +226,10 @@ def compute_mlm_results(args, model, dataloader, temperatures):
                     curr_idx += examples_per_batch
                 all_log_probs[temp].append(torch.tensor(summed_log_probs))
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
@@ -184,8 +246,11 @@ def compute_enc_dec_mask_results(args, model, dataloader, temperatures):
     subset_to_stats = {temp : {} for temp in temperatures}
     predictions = {temp : defaultdict(list) for temp in subset_to_stats}
     final_predictions = {temp : {} for temp in subset_to_stats}
+    no_image = False
+    if args.images_path is None:
+        no_image = True
 
-    for raw_sentences, sentence_dict, labels, metadatas, uids in tqdm(dataloader):
+    for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
         update_subset_to_stats(subset_to_stats, metadatas)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("enc_attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
@@ -208,18 +273,27 @@ def compute_enc_dec_mask_results(args, model, dataloader, temperatures):
                 targets = sentence_dict[f"{prefix}_targets"][batch_idx*bsz:(batch_idx+1)*bsz].to(DEVICE)
 
                 # Do the log-probs
-                logits = model(
-                    input_ids=tokens,
-                    attention_mask=attn_mask,
-                    decoder_input_ids=dec_input_ids,
-                    decoder_attention_mask=dec_attn_mask
-                )
-                if isinstance(logits, tuple):
-                    logits = logits[0]  # Bx1xV
+                if no_image:
+                    logits = model(
+                        input_ids=tokens,
+                        attention_mask=attn_mask,
+                        decoder_input_ids=dec_input_ids,
+                        decoder_attention_mask=dec_attn_mask,
+                    )
                 else:
-                    logits = logits["logits"]  # Bx1xV
+                    logits = model(
+                        input_ids=tokens,
+                        attention_mask=attn_mask,
+                        decoder_input_ids=dec_input_ids,
+                        decoder_attention_mask=dec_attn_mask,
+                        pixel_values=images.to(DEVICE),
+                    )
+                if isinstance(logits, tuple):
+                    logits = logits[0]  # BxTxV
+                else:
+                    logits = logits["logits"]  # BxTxV
 
-                masked_logits = logits[:, 0]  # BxV
+                masked_logits = logits[:, -1]  # BxV
 
                 for temp in subset_to_stats:
                     log_probs = F.log_softmax(masked_logits / temp, dim=-1)
@@ -239,7 +313,10 @@ def compute_enc_dec_mask_results(args, model, dataloader, temperatures):
                     curr_idx += examples_per_batch
                 all_log_probs[temp].append(torch.tensor(summed_log_probs))
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
@@ -256,8 +333,11 @@ def compute_enc_dec_prefix_results(args, model, dataloader, temperatures):
     subset_to_stats = {temp : {} for temp in temperatures}
     predictions = {temp : defaultdict(list) for temp in subset_to_stats}
     final_predictions = {temp : {} for temp in subset_to_stats}
+    no_image = False
+    if args.images_path is None:
+        no_image = True
 
-    for raw_sentences, sentence_dict, labels, metadatas, uids in tqdm(dataloader):
+    for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
         update_subset_to_stats(subset_to_stats, metadatas)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("dec_attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
@@ -265,12 +345,21 @@ def compute_enc_dec_prefix_results(args, model, dataloader, temperatures):
         # Inference
         all_log_probs = {temp : [] for temp in subset_to_stats}
         for prefix in prefixes:
-            logits = model(
-                input_ids=sentence_dict[f"{prefix}_enc_tokens"].to(DEVICE),
-                attention_mask=sentence_dict[f"{prefix}_enc_attn_mask"].to(DEVICE),
-                decoder_input_ids=sentence_dict[f"{prefix}_dec_tokens"].to(DEVICE),
-                decoder_attention_mask=sentence_dict[f"{prefix}_dec_attn_mask"].to(DEVICE),
-            )
+            if no_image:
+                logits = model(
+                    input_ids=sentence_dict[f"{prefix}_enc_tokens"].to(DEVICE),
+                    attention_mask=sentence_dict[f"{prefix}_enc_attn_mask"].to(DEVICE),
+                    decoder_input_ids=sentence_dict[f"{prefix}_dec_tokens"].to(DEVICE),
+                    decoder_attention_mask=sentence_dict[f"{prefix}_dec_attn_mask"].to(DEVICE),
+                )
+            else:
+                logits = model(
+                    input_ids=sentence_dict[f"{prefix}_enc_tokens"].to(DEVICE),
+                    attention_mask=sentence_dict[f"{prefix}_enc_attn_mask"].to(DEVICE),
+                    decoder_input_ids=sentence_dict[f"{prefix}_dec_tokens"].to(DEVICE),
+                    decoder_attention_mask=sentence_dict[f"{prefix}_dec_attn_mask"].to(DEVICE),
+                    pixel_values=images.to(DEVICE),
+                )
             if isinstance(logits, tuple):
                 logits = logits[0]  # BxTxV
             else:
@@ -278,11 +367,15 @@ def compute_enc_dec_prefix_results(args, model, dataloader, temperatures):
 
             for temp in subset_to_stats:
                 log_probs = F.log_softmax(logits / temp, dim=-1)
-                target_log_probs = torch.gather(log_probs, -1, sentence_dict[f"{prefix}_targets"].to(DEVICE).unsqueeze(-1)).squeeze(-1)
+                start_pred_token = log_probs.size(1) - sentence_dict[f"{prefix}_targets"].size(1)
+                target_log_probs = torch.gather(log_probs[:, start_pred_token:], -1, sentence_dict[f"{prefix}_targets"].to(DEVICE).unsqueeze(-1)).squeeze(-1)
                 phrase_log_probs = torch.sum(target_log_probs * sentence_dict[f"{prefix}_phrase_mask"].to(DEVICE), dim=1)
                 all_log_probs[temp].append(phrase_log_probs.cpu())
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
