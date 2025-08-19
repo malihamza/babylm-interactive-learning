@@ -246,7 +246,9 @@ class CustomPPOTrainer(PPOTrainer):
                     if prompt_used + query_words > self.word_budget:
                         break
                     queries_ready = time.time()
-                    gens = self.generate(queries, **self.gen_kwargs,)
+                    with torch.no_grad():
+                        self.model.gradient_checkpointing_disable()
+                        gens = self.generate(queries, **self.gen_kwargs)
                     gens_ready = time.time()
                     resp_only    = [g[len(q):] for g, q in zip(gens, queries)]
                     dec_resp     = [self.tokenizer.decode(r) for r in resp_only]
