@@ -400,7 +400,7 @@ def collate_preds(args: argparse.Namespace) -> None:
         fast_eval_results = get_fast_eval_metrics(args)
         full_results["fast_eval_results"] = fast_eval_results
 
-    output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / f"all_full_preds_and_fast_scores_{args.backend}.json"
+    output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / f"all_full_preds_and_fast_scores_{args.backend}.json"
     with output_path.open("w") as f:
         json.dump(full_results, f)
 
