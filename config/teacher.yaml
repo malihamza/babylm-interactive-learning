@@ -5,4 +5,4 @@ max_tokens: 6
 min_score: 0
 max_score: 3
 default_score: 0.5
-seed: 41
+seed: 42
