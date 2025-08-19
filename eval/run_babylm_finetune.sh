@@ -5,7 +5,8 @@ trap 'echo "Error occurred in $0 at line $LINENO"; exit 1' ERR
 # ----- Defaults -----
 #MODEL_PATH="BabyLM-community/babylm-baseline-100m-gpt2"
 #MODEL_PATH="BabyLM-community/babylm-interaction-baseline-simpo"
-MODEL_PATH="llm-slice/babylm-gpt2-small-90M-seed42"
+#MODEL_PATH="llm-slice/blm-gpt2s-90M-s42_chck_200M_ppo-1000K-seed42"
+MODEL_PATH="llm-slice/blm-gpt2s-90M-s42_901M-s42_submission"
 LR="3e-5"
 BSZ="32"
 BIG_BSZ="16"

@@ -4,8 +4,9 @@ trap 'echo "Error occurred in $0 at line $LINENO"; exit 1' ERR
 
 #MODEL_PATH="BabyLM-community/babylm-baseline-100m-gpt2"
 #MODEL_PATH="BabyLM-community/babylm-interaction-baseline-simpo"
-#MODEL_PATH="llm-slice/babylm-gpt2-small-90M-seed42"
-MODEL_PATH="llm-slice/babylm-gpt2-small-90M-seed41_chck_200M_ppo-1600K-seed41"
+#MODEL_PATH="llm-slice/blm-gpt2s-90M-s42"
+#MODEL_PATH="llm-slice/blm-gpt2s-90M-s42_chck_200M_ppo-1000K-seed42"
+MODEL_PATH="llm-slice/blm-gpt2s-90M-s42_901M-s42_submission"
 REVISION_NAME="main" # main, chck_1000M, or chck_900M
 BACKEND="causal"
 EVAL_SCRIPT="eval_zero_shot.sh"
@@ -16,4 +17,4 @@ sbatch --export=MODEL_PATH="${MODEL_PATH}",REVISION_NAME="${REVISION_NAME}",BACK
     --output="${LOGDIR}/babylm_eval_%j.log" \
     run_babylm_eval.hpc
 
-echo "Submitted 1000M eval job. Check $LOGDIR for logs."
+echo "Submitted final eval job. Check $LOGDIR for logs."
