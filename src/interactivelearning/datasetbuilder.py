@@ -263,7 +263,7 @@ class DeterministicPromptDatasetBuilder(DatasetBuilder):
         # Determine how many times to repeat the prompt to fill the token_limit
         if self.token_limit is not None:
             # n = max(1, self.token_limit // max(len(ids), 1))
-            n = max(1, int(self.token_limit // 4.9)) # query_words only count once, so the max. limit is ~5 teacher words per round
+            n = max(1, int(self.token_limit // 2.9)) # query_words only count once, so the max. limit is ~3 teacher words per round
         else:
             n = 1000  # Default, arbitrary
 
