@@ -7,6 +7,7 @@ BIG_BSZ=${4:-16}        # default: 16
 MAX_EPOCHS=${5:-10}     # default: 10
 REVISION_NAME=${6:-"main"}  # default: "main"
 SEED=${7:-42}           # default: 42
+WSC_EPOCHS=${8:-30}     # default: 30
 
 # WANDB parameters
 WANDB_PROJECT="BLM_eval_finetuning"
