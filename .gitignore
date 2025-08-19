@@ -15,6 +15,7 @@ data/
 babylm-*/
 babylm_*/
 
+*.tar.gz
 
 __MACOSX
 .vscode
