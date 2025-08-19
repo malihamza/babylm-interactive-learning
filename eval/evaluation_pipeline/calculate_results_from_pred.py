@@ -275,9 +275,10 @@ def _calculate_aoa_results(
 
 
 if __name__ == "__main__":
+    results_store = {}
     args = _parse_arguments()
     path_to_results = (
-        args.results_dir / args.model_path_or_name.stem # / args.revision_name
+        args.results_dir / args.model_path_or_name.stem / args.revision_name
     )
     if args.fast:
         path_to_results = path_to_results / f"all_fast_preds_{args.backend}.json"
@@ -290,37 +291,45 @@ if __name__ == "__main__":
             all_results["blimp"], evaluation_path / "blimp_fast"
         )
         print(f"BLIMP\t\t{score:.2f}")
+        results_store["BLIMP"] = score
         # Supplement
         score = _calculate_blimp_results(
             all_results["blimp_supplement"], evaluation_path / "supplement_fast"
         )
         print(f"SUPPLEMENT\t{score:.2f}")
+        results_store["SUPPLEMENT"] = score
         # EWoK
         score = _calculate_ewok_results(
             all_results["ewok"], evaluation_path / "ewok_fast"
         )
         print(f"EWOK\t\t{score:.2f}")
+        results_store["EWOK"] = score
         # Entity Tracking
         score = _calculate_entity_tracking_results(
             all_results["entity_tracking"], evaluation_path / "entity_tracking_fast"
         )
         print(f"ENTITY TRACKING\t{score:.2f}")
+        results_store["ENTITY"] = score
         # WUG ADJ NOMINALIZATION
         score = _calculate_wug_results(
             all_results["wug_adj"], evaluation_path / "wug_adj_nominalization"
         )
         print(f"WUG ADJ\t\t{score:.2f}")
+        results_store["WUG_ADJ"] = score
         # WUG PAST TENSE
         score = _calculate_wug_results(
             all_results["wug_past"], evaluation_path / "wug_past_tense"
         )
         print(f"WUG PAST\t\t{score:.2f}")
+        results_store["WUG_PAST"] = score
         # Reading (SPR)
         scores = _calculate_reading_results(
             all_results["reading"], evaluation_path / "reading" / "reading_data.csv"
         )
         print(f"READING (SPR)\t{scores[0]:.2f}")
         print(f"READING (ET)\t{scores[1]:.2f}")
+        results_store["READING (SPR)"] = scores[0]
+        results_store["READING (ET)"] = scores[1]
     else:
         #path_to_results = path_to_results / f"all_full_preds_{args.backend}.json"
         path_to_results = path_to_results / f"all_full_preds_and_fast_scores_{args.backend}.json"
@@ -333,49 +342,70 @@ if __name__ == "__main__":
             all_results["blimp"], evaluation_path / "blimp_filtered"
         )
         print(f"BLIMP\t\t{score:.2f}")
+        results_store["BLIMP"] = score
         # Supplement
         score = _calculate_blimp_results(
             all_results["blimp_supplement"], evaluation_path / "supplement_filtered"
         )
         print(f"SUPPLEMENT\t{score:.2f}")
+        results_store["SUPPLEMENT"] = score
         # EWoK
         score = _calculate_ewok_results(
             all_results["ewok"], evaluation_path / "ewok_filtered"
         )
         print(f"EWOK\t\t{score:.2f}")
+        results_store["EWOK"] = score
         # Entity Tracking
         score = _calculate_entity_tracking_results(
             all_results["entity_tracking"], evaluation_path / "entity_tracking"
         )
         print(f"ENTITY TRACKING\t{score:.2f}")
+        results_store["ENTITY"] = score
         # WUG ADJ NOMINALIZATION
         score = _calculate_wug_results(
             all_results["wug_adj"], evaluation_path / "wug_adj_nominalization"
         )
         print(f"WUG ADJ\t\t{score:.2f}")
+        results_store["WUG_ADJ"] = score
         # WUG PAST TENSE
         score = _calculate_wug_results(
             all_results["wug_past"], evaluation_path / "wug_past_tense"
         )
         print(f"WUG PAST\t{score:.2f}")
+        results_store["WUG_PAST"] = score
         # COMPS
         score = _calculate_comps_results(
             all_results["comps"], evaluation_path / "comps"
         )
         print(f"COMPS\t\t{score:.2f}")
+        results_store["COMPS"] = score
         # Reading (SPR)
         scores = _calculate_reading_results(
             all_results["reading"], evaluation_path / "reading" / "reading_data.csv"
         )
         print(f"READING (SPR)\t{scores[0]:.2f}")
         print(f"READING (ET)\t{scores[1]:.2f}")
+        results_store["READING (SPR)"] = scores[0]
+        results_store["READING (ET)"] = scores[1]
         # GLUE
         score = _calculate_glue_results(
             all_results["glue"], evaluation_path / "glue_filtered"
         )
+
         print(f"GLUE\t\t{score:.2f}")
+        results_store["GLUE"] = score
         # AoA
         score = _calculate_aoa_results(
             all_results["aoa"], evaluation_path / "aoa" / "cdi_human.csv"
         )
         print(f"AoA\t\t{score:.2f}")
+        results_store["AOA"] = score
+
+        # Save results to CSV for later plotting
+        df_results = pd.DataFrame(
+            list(results_store.items()), columns=["Metric", "Score"]
+        )
+
+        save_path = args.results_dir / args.model_path_or_name.stem / f"eval_{args.revision_name}.csv"
+        df_results.to_csv(save_path, index=False)
+        print(f"\nSaved results to {save_path}")
