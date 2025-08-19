@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 STRICT_SMALL_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 11)]
-#OTHER_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 10)] + [f"chck_{i*100}M" for i in range(1, 11)] # for baselines
-OTHER_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 10)] + [f"chck_{i*100}M" for i in range(1, 10)] # for RL model (excluding 900-1M etc.)
+OTHER_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 10)] + [f"chck_{i*100}M" for i in range(1, 11)] # for baselines
+#OTHER_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 10)] + [f"chck_{i*100}M" for i in range(1, 10)] # for RL model (excluding 900-1M etc.)
 
 
 BLIMP_FAST_SIZE = 200
