@@ -111,7 +111,7 @@ class Teacher(ABC):
                 logger.warning("Score parsing failed for output '%s': %s", text, str(e))
                 reward = self.default_score
             rewards.append(reward)
-            total_length += len(text)
+            total_length += len(text.split())
 
         logger.debug("Raw outputs: %s", raw_outputs)
         logger.debug("Rewards: %s", rewards)
