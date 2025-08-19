@@ -21,6 +21,10 @@ else
     echo "Using default TMPDIR: $TMPDIR"
 fi
 
+export TMPDIR=$TMPDIR/$USER/job_$SLURM_JOB_ID
+mkdir -p $TMPDIR
+echo "Using TMPDIR/job directory: $TMPDIR"
+
 # ========== ENVIRONMENT SETUP ==========
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     module purge
@@ -81,7 +85,8 @@ export SYS_LOG_PID=$!
 python -u ppo.py
 echo "[INFO] PPO training complete."
 
-cp -r $TMPDIR/saved_models ~/myprojects/BLM2025/saved_models/job_$SLURM_JOB_ID/
+mkdir -p ~/myproject/BLM2025/saved_models/job_$SLURM_JOB_ID
+cp -r $TMPDIR/saved_models ~/myproject/BLM2025/saved_models/job_$SLURM_JOB_ID/
 
 # ========== Cleanup logging jobs (safe even if already exited) ==========
 if [[ -n "${GPU_LOG_PID:-}" ]]; then
