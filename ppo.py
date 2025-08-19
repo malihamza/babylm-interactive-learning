@@ -1,3 +1,26 @@
+import os
+# Use environment TMPDIR for all caches and outputs
+scratch = os.environ.get('TMPDIR', '/tmp')
+hf_cache = os.path.join(scratch, 'hf_cache')
+pip_cache = os.path.join(scratch, 'pip_cache')
+wandb_cache = os.path.join(scratch, 'wandb_cache')
+torch_compile_cache = os.path.join(scratch, 'torch_compile_cache')
+
+# Set HuggingFace, pip, and output directories to local temp
+os.environ['HF_HOME'] = hf_cache
+os.environ['TRANSFORMERS_CACHE'] = hf_cache
+os.environ['HUGGINGFACE_HUB_CACHE'] = hf_cache
+os.environ['PIP_CACHE_DIR'] = pip_cache
+os.environ['WANDB_DIR'] = wandb_cache
+os.environ['TORCH_COMPILE_CACHE_DIR'] = torch_compile_cache
+
+os.makedirs(hf_cache, exist_ok=True)
+os.makedirs(pip_cache, exist_ok=True)
+os.makedirs(wandb_cache, exist_ok=True)
+os.makedirs(torch_compile_cache, exist_ok=True)
+print(f"[INFO] Using HF and pip cache at {hf_cache} and {pip_cache} and {wandb_cache} and {torch_compile_cache}.")
+
+
 import yaml
 from src.interactivelearning.rewardmodel import RandomRewardModel, Llama3RewardModel
 from src.interactivelearning.ppotrainer import CustomPPOTrainer
@@ -9,22 +32,6 @@ from src.interactivelearning.ppoconfig import CustomPPOConfig
 import random
 import numpy as np
 import torch
-
-import os
-# Use environment TMPDIR for all caches and outputs
-scratch = os.environ.get('TMPDIR', '/tmp')
-hf_cache = os.path.join(scratch, 'hf_cache')
-pip_cache = os.path.join(scratch, 'pip_cache')
-
-# Set HuggingFace, pip, and output directories to local temp
-os.environ['HF_HOME'] = hf_cache
-os.environ['TRANSFORMERS_CACHE'] = hf_cache
-os.environ['HUGGINGFACE_HUB_CACHE'] = hf_cache
-os.environ['PIP_CACHE_DIR'] = pip_cache
-
-os.makedirs(hf_cache, exist_ok=True)
-os.makedirs(pip_cache, exist_ok=True)
-print(f"[INFO] Using HF and pip cache at {hf_cache} and {pip_cache}")
 
 def main(ppo_cfg, teacher_cfg):
 
