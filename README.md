@@ -55,6 +55,8 @@ python3 src/pre_training/training.py \
 
 This pretraining step ensures that the model is well-initialized before applying PPO-based fine-tuning.
 
+On a cluster, execute ```run_pretrain.sh```, which creates a job by calling ```run_pretrain.hpc```, which then calls ```src/pre_training/training.py```.
+
 ## 3. Teacher Model Configuration
 
 Teacher model evaluates prompt-response pairs and assigns scores used as reward signals during PPO training. Configuration is stored in:
@@ -74,16 +76,13 @@ min_score: 1
 max_score: 9
 ```
 
-Ensure your `prompt_template_path` is a valid Jinja2-style file using:
-```
-{{ context }} and {{ continuation }}
-```
+Ensure your `prompt_template_path` is a valid markdown (.md) file, including the '{{student_completion}}' to evaluate.
 
 ---
 
 ## 4. Dataset Configuration
 
-The dataset builder (`TinyStoriesDatasetBuilder`, `IMDBDatasetBuilder`, etc.) handles dataset loading, filtering, and formatting. Token limit ensures sampling only up to a defined number of tokens for PPO training.
+The dataset builder (`DeterministicPromptDatasetBuilder`, `TinyStoriesDatasetBuilder`, `WritingPromptsDatasetBuilder`, `IMDBDatasetBuilder`, etc.) handles dataset loading, filtering, and formatting. Token limit ensures sampling only up to a defined number of tokens for PPO training.
 
 Each dataset builder is added to the `DatasetCombiner`, like:
 
@@ -110,26 +109,29 @@ config/ppo.yaml
 ### Sample Fields:
 
 ```yaml
-model_name: "meta-llama/Llama-3-8b-instruct"
-learning_rate: 1.41e-5
-batch_size: 2
-log_with: null
+model_name: llm-slice/blm-gpt2s-90M-s42
+revision_name: chck_900M
+learning_rate: 1e-6
+log_with: wandb
+hf_org : llm-slice
 
-# Extended Config Fields
-token_limit: 1000000
-checkpoint_interval: 100000
-output_min_length: 64
-output_max_length: 128
-generation_kwargs:
-  temperature: 1.0
-  top_k: 50
-  top_p: 0.95
-
+# Trainer Settings
 num_epochs: 1
-query_min_length: 32
-query_max_length: 128
-data_path: "data/"
-save_base_dir: "saved_models"
+batch_size: 20
+token_limit: 20000
+save_base_dir: saved_models/
+
+data_path: data/ppo/
+
+# Output generation
+generation_kwargs:
+  min_length: -1
+  max_new_tokens: 90
+  top_k: 0
+  top_p: 1
+  do_sample: true
+  num_beams: 1
+
 ```
 
 These fields are passed to `CustomPPOConfig`, which extends `trl.PPOConfig` and adds extra custom logic such as checkpointing and token counting.
@@ -152,7 +154,7 @@ This will:
 
 ## 7. Output Folder Structure
 
-During PPO training, the code automatically creates a dedicated output directory to store model checkpoints and training metadata. This is handled by the `make_model_output_dir()` function.
+During PPO training, the code automatically creates a dedicated output directory to store model checkpoints and training metadata.
 
 ### Folder Naming Convention
 
@@ -164,7 +166,7 @@ The folder name follows this format:
 
 **Example:**
 ```
-meta-llama_Llama-3-8b-instruct_300K_tokens__2025-07-20__23-15-10/
+blm-gpt2s-90M-s42_chck_20M_ppo-1000K-seed42__2025-08-14__12-11-06/
 ```
 
 This ensures each training run has a unique and timestamped folder.
@@ -174,43 +176,25 @@ This ensures each training run has a unique and timestamped folder.
 Inside this folder:
 
 ```
-meta-llama_Llama-3-8b-instruct_300K_tokens__2025-07-20__23-15-10/
-│
-├── checkpoints/
-│   ├── checkpoint_100K_tokens/
-│   ├── checkpoint_200K_tokens/
-│   └── ...
+blm-gpt2s-90M-s42_chck_20M_ppo-1000K-seed42__2025-08-14__12-11-06/
 │
 └── meta_data/
+    ├── ppo.yaml                 # PPO config file
+    ├── teacher.yaml             # Teacher config file
     ├── generated_outputs.csv    # Prompt → Response + reward log
     └── training_stats.csv       # Batch-wise reward and loss tracking
 ```
 
-### Purpose of Each Subfolder:
-
-- `checkpoints/`: Contains intermediate saved models at defined token intervals (e.g., every 100K tokens).
-- `meta_data/`: Logs responses, rewards, and loss metrics for later analysis or reproducibility.
-
-This design ensures easy tracking and analysis for each fine-tuning session, especially useful when training across different model configurations or datasets.
-
-Happy fine-tuning!
-
-
 
 ## 8. Evaluation
 
-After pretraining or fine-tuning your model, you can evaluate it using the [evaluation-pipeline-2025](https://github.com/babylm/evaluation-pipeline-2025) scripts.
+After pretraining or interactive reinforcement learning of your model, you can evaluate it using the [BaybLM evaluation-pipeline-2025](https://github.com/babylm/evaluation-pipeline-2025) scripts.
 
 ### Step-by-Step Instructions
 
-```bash
-cd evaluation-pipeline-2025
-./eval_finetuning.sh llm-slice/babylm-gpt2-small
-./eval_zero_shot.sh llm-slice/babylm-gpt2-small
-```
-
 - `eval_finetuning.sh`: Evaluates your **fine-tuned model** on the benchmark tasks  
 - `eval_zero_shot.sh`: Evaluates your model in a **zero-shot setting** (no examples are shown during evaluation)
+- `eval_zero_shot_fast.sh`: Evaluates your model on a number of checkpoints in a **zero-shot setting** (no examples are shown during evaluation), on reduced dataset
+- `eval_aoa.sh`: Evaluates your model on all checkpoints for age of acquisition (AoA).
 
-Make sure your Hugging Face model (`llm-slice/babylm-gpt2-small`) is accessible or correctly logged in before running the scripts.
-
+On a cluster, you can use the `run_(...).sh` to run a job with `run_(...).hpc`.
